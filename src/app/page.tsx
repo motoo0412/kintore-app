@@ -552,3 +552,29 @@ export default function TotonouWorkoutApp() {
           </div>
         )}
       </main>
+      <nav className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-md border-t border-sky-100 py-2.5 px-6 z-20">
+        <div className="max-w-md mx-auto flex justify-around items-center">
+          {[
+            { id: "condition", label: "体調チェック", icon: "💧" },
+            { id: "myset", label: "マイセット", icon: "📋" },
+            { id: "calendar", label: "約束カレンダー", icon: "🗓️" },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition ${
+                  active ? "text-sky-600 font-bold" : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <span className="text-lg">{tab.icon}</span>
+                <span className="text-[11px]">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
