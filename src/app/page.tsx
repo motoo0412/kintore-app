@@ -6,71 +6,74 @@ type Tab = "home" | "record" | "history";
 type RecordMode = "workout" | "injury";
 type HistoryFilter = "all" | "workout" | "injury";
 
-type Workout = { id: string; exercise: string; weight: number; reps: number; sets: number; createdAt: string };
-type Injury = { id: string; part: string; pain: number; date: string; memo: string; createdAt: string };
-type Condition = { sleep: number; jointPain: number; focus: number };
-type Store = { workouts: Workout[]; injuries: Injury[]; condition?: Condition };
+type Workout = {
+  id: string;
+  exercise: string;
+  weight: number;
+  reps: number;
+  sets: number;
+  createdAt: string;
+};
 
-const STORAGE_KEY = "nyantore-records-v1";
-const EXERCISE_PRESETS = ["ブルガリアンスクワット", "ルーマニアンデッドリフト", "ワンハンドロー", "ダンベルベンチプレス", "サイドレイズ", "リバースフライ", "デッドバグ"];
-const BODY_PARTS = ["首", "肩", "ひじ", "手首", "背中", "腰", "股関節", "ひざ", "足首", "ふくらはぎ"];
-const PAIN_LABELS = ["", "ほぼ気にならない", "すこし違和感", "ほどほど", "しっかりケア", "お休み優先"];
+type Injury = {
+  id: string;
+  part: string;
+  pain: number;
+  date: string;
+  memo: string;
+  createdAt: string;
+};
+
+type Condition = {
+  sleep: number;
+  muscleSoreness: number;
+  jointPain: number;
+  focus: number;
+};
+
+type Store = {
+  workouts: Workout[];
+  injuries: Injury[];
+  condition: Condition;
+};
+
+const STORAGE_KEY = "baron-kintore-records-v1";
+
+const EXERCISE_PRESETS = [
+  "ブルガリアンスクワット",
+  "ルーマニアンデッドリフト",
+  "ワンハンドロー",
+  "ダンベルベンチプレス",
+  "サイドレイズ",
+  "デッドバグ",
+];
+
+const BODY_PARTS = ["首", "肩", "ひじ", "手首", "背中", "腰", "股関節", "ひざ", "足首"];
+
 const SLEEP_LABELS = ["", "寝不足", "やや浅い", "ふつう", "よく寝た", "バッチリ"];
-const JOINT_LABELS = ["", "痛みなし", "すこし違和感", "やや気になる", "痛みあり", "強い痛み"];
-const FOCUS_LABELS = ["", "ぼんやり", "低め", "ふつう", "集中できる", "絶好調"];
-const STAR_LEVELS =[1,2,3,4,5];
-const DEFAULT_CONDITION: Condition = { sleep: 3, jointPain: 1, focus: 3 };
-const EMPTY_STORE: Store = { workouts: [], injuries: [], condition: DEFAULT_CONDITION };
+const MUSCLE_LABELS = ["", "強い筋肉痛", "けっこう張る", "少し張りあり", "ほぼ回復", "絶好調"];
+const JOINT_LABELS = ["", "強い痛み", "痛みあり", "少し違和感", "ほぼなし", "痛みゼロ"];
+const FOCUS_LABELS = ["", "ぼんやり", "低め", "ふつう", "集中できる", "研ぎ澄まされてる"];
+const CARE_LABELS = ["", "経過観察", "すこし違和感", "ほどほど", "しっかりケア", "お休み優先"];
 
-function isWorkout(v: unknown): v is Workout {
-  if (!v || typeof v !== "object") return false;
-  const i = v as Workout;
-  return typeof i.id === "string" && typeof i.exercise === "string" && typeof i.weight === "number" && typeof i.reps === "number" && typeof i.sets === "number" && typeof i.createdAt === "string";
-}
+const STAR_LEVELS = Array.from({ length: 5 }, (_, i) => i + 1);
 
-function isInjury(v: unknown): v is Injury {
-  if (!v || typeof v !== "object") return false;
-  const i = v as Injury;
-  return typeof i.id === "string" && typeof i.part === "string" && typeof i.pain === "number" && typeof i.date === "string" && typeof i.memo === "string" && typeof i.createdAt === "string";
-}
+const DEFAULT_CONDITION: Condition = {
+  sleep: 4,
+  muscleSoreness: 4,
+  jointPain: 5,
+  focus: 4,
+};
 
-function loadStore(): Store {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_STORE;
-    const parsed = JSON.parse(raw) as Partial<Store>;
-    const cond = parsed.condition;
-    const validCond = cond && typeof cond.sleep === "number" && typeof cond.jointPain === "number" && typeof cond.focus === "number" ? cond : DEFAULT_CONDITION;
-    return {
-      workouts: Array.isArray(parsed.workouts) ? parsed.workouts.filter(isWorkout) : [],
-      injuries: Array.isArray(parsed.injuries) ? parsed.injuries.filter(isInjury) : [],
-      condition: validCond,
-    };
-  } catch {
-    return EMPTY_STORE;
-  }
-}
+const EMPTY_STORE: Store = {
+  workouts: [],
+  injuries: [],
+  condition: DEFAULT_CONDITION,
+};
 
 function todayString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function isSameDay(iso: string, day = todayString()) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` === day;
-}
-
-function daysSince(day: string) {
-  const start = new Date(`${day}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
-}
-
-function daysLabel(day: string) {
-  const days = daysSince(day);
-  return days === 0 ? "今日から" : `${days}日経過`;
 }
 
 function formatDateTime(iso: string) {
@@ -78,140 +81,444 @@ function formatDateTime(iso: string) {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function formatDay(day: string) {
-  const [y, m, d] = day.split("-");
-  return `${y}/${m}/${d}`;
+function getSliderTheme(val: number) {
+  if (val >= 4) {
+    return {
+      accent: "#0ea5e9",
+      badgeBg: "bg-sky-50 text-sky-700 border-sky-200",
+      barColor: "from-teal-400 to-sky-500",
+    };
+  }
+  if (val === 3) {
+    return {
+      accent: "#14b8a6",
+      badgeBg: "bg-teal-50 text-teal-700 border-teal-200",
+      barColor: "from-emerald-400 to-teal-500",
+    };
+  }
+  return {
+    accent: "#f59e0b",
+    badgeBg: "bg-amber-50 text-amber-800 border-amber-200",
+    barColor: "from-rose-400 to-amber-500",
+  };
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 11) return "おはよう";
-  if (h < 17) return "こんにちは";
-  return "おつかれさま";
-}
+function getBaronAdvice(condition: Condition, workouts: Workout[]) {
+  const { sleep, muscleSoreness, jointPain, focus } = condition;
+  const latestWorkout = workouts;
 
-function currentInjuries(injuries: Injury[]) {
-  const latest = new Map<string, Injury>();
-  const sorted = [...injuries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
-  for (const inj of sorted) {
-    if (!latest.has(inj.part)) latest.set(inj.part, inj);
+  if (sleep >= 4 && muscleSoreness >= 4 && jointPain >= 4 && focus >= 4) {
+    const nextHint = latestWorkout
+      ? `前回の「${latestWorkout.exercise}（${latestWorkout.weight}kg）」から少しだけ回数か重さを伸ばしてみよう！`
+      : "まずはフォームを意識して、前回より1回でも多く挑戦してみよう！";
+    return {
+      status: "絶好調モード",
+      statusStyle: "bg-sky-100 text-sky-800",
+      message: `今日も漸進性過負荷で頑張ろうね！${nextHint}`,
+    };
   }
-  return [...latest.values()].sort((a, b) => b.pain - a.pain || b.date.localeCompare(a.date));
-}
 
-function getDynamicAdvice(condition: Condition, workouts: Workout[], injuries: Injury[]) {
-  const { sleep, jointPain, focus } = condition;
-  const worst = currentInjuries(injuries);
-  const trainedToday = workouts.some((w) => isSameDay(w.createdAt));
+  if (jointPain <= 2) {
+    return {
+      status: "関節ケア優先",
+      statusStyle: "bg-amber-100 text-amber-800",
+      message:
+        "関節に痛みがあるみたいだね。今日は無理せずお休みするか、痛みが出ない種目だけに絞ってストレッチ中心にしようね。",
+    };
+  }
 
-  if (jointPain >= 4 || (worst && worst.pain >= 4)) {
-    const partText = worst ? `${worst.part}や関節` : "関節";
-    return { badge: "お休み・ケア優先", title: "今日は無理せず回復に専念しよう", body: `${partText}の痛みが強めだね。重りを使うトレーニングはお休みして、軽いストレッチや入浴でゆっくり体をいたわろう。` };
+  if (muscleSoreness <= 2 || sleep <= 2) {
+    if (latestWorkout && latestWorkout.weight > 0) {
+      const cutKg = Math.max(1, Math.round(latestWorkout.weight * 0.2 * 2) / 2);
+      const targetKg = Math.max(0, latestWorkout.weight - cutKg);
+      return {
+        status: "負荷コントロール",
+        statusStyle: "bg-teal-100 text-teal-800",
+        message: `今日は疲れや筋肉痛が残っているね。いつもより${cutKg}kg軽くしてみよう（${latestWorkout.exercise}なら${targetKg}kgくらいがおすすめだよ）！`,
+      };
+    }
+    return {
+      status: "負荷コントロール",
+      statusStyle: "bg-teal-100 text-teal-800",
+      message:
+        "今日は疲れや筋肉痛が残っているね。いつもより2〜5kg軽くして、フォームの確認メインで動こうね！",
+    };
   }
-  if (sleep <= 2 && focus <= 2) {
-    return { badge: "軽めメニュー推奨", title: "睡眠と集中力が低め。フォーム重視で軽く！", body: "寝不足と集中力低下が重なるとケガをしやすいよ。いつもの6〜7割の重さで、1〜2セットだけ丁寧に動かせば十分合格！" };
-  }
-  if (sleep <= 2) {
-    return { badge: "ボリューム控えめ", title: "睡眠が浅めだからセット数を減らそう", body: "体の回復が追いついていないかも。種目数をしぼって短時間で切り上げ、今日は早めに休むのが一番のトレーニングだよ。" };
-  }
-  if (jointPain === 3) {
-    return { badge: "部位を選んで実行", title: "違和感がある関節を避けてメニューを組もう", body: "痛みが出る動きはストップ。痛みのない部位（上半身や体幹など）を中心にして、ウォーミングアップを長めにとろうね。" };
-  }
+
   if (focus <= 2) {
-    return { badge: "気分転換モード", title: "集中しにくい日は好きな種目だけでOK", body: "無理に追い込まなくて大丈夫。得意な種目を1つだけやって、体が温まったらスッキリ終了しよう！" };
+    return {
+      status: "マイペース調整",
+      statusStyle: "bg-teal-100 text-teal-800",
+      message:
+        "集中しにくい日は無理しなくて大丈夫。今日はセット数を1〜2セット減らしてもいいかも！短時間でスッキリ終わらせよう。",
+    };
   }
-  if (sleep >= 4 && focus >= 4 && jointPain <= 2) {
-    return { badge: "ベストコンディション", title: "心も体も絶好調！記録更新のチャンス", body: "睡眠バッチリ、集中力も最高！しっかりウォームアップしてから、メイン種目の重量や回数アップに挑戦してみよう。" };
-  }
-  if (trainedToday) {
-    return { badge: "ナイスファイト", title: "今日のトレーニング完了！しっかり栄養補給を", body: "今日も自分のペースで積み上げられたね。水分とタンパク質をとって、ゆっくり体を休めよう。" };
-  }
-  return { badge: "通常メニューOK", title: "安定したコンディション！マイペースにいこう", body: "体調のバランスは良好。まずは軽いセットから始めて、体の動きを確かめながら進めていこうね。" };
-}
 
-function CatFace({ className = "h-14 w-14" }: { className?: string }) {
+  return {
+    status: "バランス調整",
+    statusStyle: "bg-cyan-100 text-cyan-800",
+    message:
+      "まずまずの体調だね！様子を見ながら進めて、きつかったらセット数を1セット減らしてもいいかも。無理なくいこう！",
+  };
+}
+function BaronCat({ className = "h-20 w-20" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <circle cx="60" cy="60" r="56" fill="#e0f2fe" />
-      <path d="M27 52 C22 28, 28 18, 48 31 Z" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M93 52 C98 28, 92 18, 72 31 Z" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M31 46 C29 32, 32 26, 44 34 Z" fill="#bae6fd" />
-      <path d="M89 46 C91 32, 88 26, 76 34 Z" fill="#bae6fd" />
-      <ellipse cx="60" cy="63" rx="36" ry="30" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" />
-      <path d="M56 34 Q60 42 64 34" fill="#2dd4bf" />
-      <ellipse cx="38" cy="68" rx="6" ry="3.8" fill="#99f6e4" opacity="0.9" />
-      <ellipse cx="82" cy="68" rx="6" ry="3.8" fill="#99f6e4" opacity="0.9" />
-      <circle cx="44" cy="59" r="5" fill="#0f172a" />
-      <circle cx="76" cy="59" r="5" fill="#0f172a" />
-      <circle cx="42.5" cy="57.2" r="1.8" fill="#ffffff" />
-      <circle cx="74.5" cy="57.2" r="1.8" fill="#ffffff" />
-      <ellipse cx="60" cy="65.5" rx="3" ry="2.2" fill="#38bdf8" />
-      <path d="M53 69 Q56.5 73 60 68.5 Q63.5 73 67 69" fill="none" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M20 60 L30 62 M19 67 L29 67" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-      <path d="M100 60 L90 62 M101 67 L91 67" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-      <path d="M40 90 Q60 97 80 90" fill="none" stroke="#14b8a6" strokeWidth="5.5" strokeLinecap="round" />
-      <circle cx="60" cy="95" r="5.5" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.5" />
+    <svg viewBox="0 0 140 140" className={className} aria-label="キジトラ長毛種のバロン君">
+      <defs>
+        <radialGradient id="baronAura" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#e0f2fe" />
+          <stop offset="100%" stopColor="#ccfbf1" />
+        </radialGradient>
+      </defs>
+      <circle cx="70" cy="70" r="66" fill="url(#baronAura)" />
+      <path
+        d="M32 86 Q24 98 36 108 Q48 122 70 122 Q92 122 104 108 Q116 98 108 86 Z"
+        fill="#f8fafc"
+        stroke="#cbd5e1"
+        strokeWidth="2"
+      />
+      <path d="M46 102 L52 114 L58 104 L64 116 L70 105 L76 116 L82 104 L88 114 L94 102" fill="none" stroke="#e2e8f0" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M30 62 L24 24 L56 42 Z" fill="#85684a" stroke="#5c452e" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M110 62 L116 24 L84 42 Z" fill="#85684a" stroke="#5c452e" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M34 56 L30 33 L50 44 Z" fill="#fed7aa" />
+      <path d="M106 56 L110 33 L90 44 Z" fill="#fed7aa" />
+      <path d="M36 48 Q44 46 46 54 M104 48 Q96 46 94 54" stroke="#fff7ed" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path
+        d="M30 66 Q22 76 30 85 Q26 93 42 97 Q56 103 70 103 Q84 103 98 97 Q114 93 110 85 Q118 76 110 66 Q110 40 70 40 Q30 40 30 66 Z"
+        fill="#a3825e"
+        stroke="#5c452e"
+        strokeWidth="2.5"
+      />
+      <path d="M55 46 L60 54 L65 48 L70 55 L75 48 L80 54 L85 46" fill="none" stroke="#473320" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M33 70 L43 72 M32 78 L42 78" stroke="#473320" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M107 70 L97 72 M108 78 L98 78" stroke="#473320" strokeWidth="2.2" strokeLinecap="round" />
+      <ellipse cx="70" cy="86" rx="18" ry="13" fill="#fffbeb" />
+      <ellipse cx="52" cy="69" rx="7" ry="7.5" fill="#0d9488" stroke="#3b2818" strokeWidth="1.8" />
+      <ellipse cx="88" cy="69" rx="7" ry="7.5" fill="#0d9488" stroke="#3b2818" strokeWidth="1.8" />
+      <circle cx="52" cy="69" r="3.8" fill="#1e293b" />
+      <circle cx="88" cy="69" r="3.8" fill="#1e293b" />
+      <circle cx="49.5" cy="66.5" r="2.2" fill="#ffffff" />
+      <circle cx="85.5" cy="66.5" r="2.2" fill="#ffffff" />
+      <path d="M66 80 L74 80 L70 84.5 Z" fill="#f472b6" />
+      <path d="M62 88 Q66 92 70 87.5 Q74 92 78 88" fill="none" stroke="#473320" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M16 78 L36 81 M14 86 L35 86 M18 94 L37 90" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M124 78 L104 81 M126 86 L105 86 M122 94 L103 90" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M48 103 Q70 110 92 103" fill="none" stroke="#06b6d4" strokeWidth="5" strokeLinecap="round" />
+      <circle cx="70" cy="108" r="4.5" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.5" />
     </svg>
   );
 }
 
-function Stars({ value, onChange }: { value: number; onChange?: (next: number) => void }) {
+function ConditionSlider({
+  label,
+  value,
+  statusText,
+  leftHint,
+  rightHint,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  statusText: string;
+  leftHint: string;
+  rightHint: string;
+  onChange: (next: number) => void;
+}) {
+  const theme = getSliderTheme(value);
+  const percent = ((value - 1) / 4) * 100;
+
   return (
-    <div className="flex gap-1" role={onChange ? "radiogroup" : undefined} aria-label="ケア度レベル">
-      {STAR_LEVELS.map((star) => {
-        const active = star <= value;
-        const cls = `text-[1.35rem] leading-none transition ${active ? "text-[#14b8a6]" : "text-slate-200"} ${onChange ? "px-0.5 active:scale-95" : ""}`;
-        return onChange ? (
-          <button key={star} type="button" role="radio" aria-checked={value === star} aria-label={`${star}（${PAIN_LABELS[star]}）`} className={cls} onClick={() => onChange(star)}>★</button>
-        ) : (
-          <span key={star} className={cls} aria-hidden="true">★</span>
-        );
-      })}
+    <div className="rounded-2xl border border-cyan-100/80 bg-white/90 p-3.5 shadow-xs">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-bold text-slate-700">{label}</span>
+        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${theme.badgeBg}`}>
+          {value} / 5・{statusText}
+        </span>
+      </div>
+
+      <div className="relative flex items-center py-1">
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full bg-gradient-to-r transition-all duration-200 ${theme.barColor}`}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={5}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{ accentColor: theme.accent }}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-90"
+          aria-label={label}
+        />
+      </div>
+
+      <div className="mt-1 flex justify-between text-[11px] text-slate-400">
+        <span>{leftHint}</span>
+        <span>{rightHint}</span>
+      </div>
     </div>
   );
 }
-
-export default function Home() {
-  const [ready, setReady] = useState(false);
+export default function KintoreApp() {
   const [tab, setTab] = useState<Tab>("home");
+  const [store, setStore] = useState<Store>(EMPTY_STORE);
+  const [loaded, setLoaded] = useState(false);
+
   const [recordMode, setRecordMode] = useState<RecordMode>("workout");
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [injuries, setInjuries] = useState<Injury[]>([]);
-  const [condition, setCondition] = useState<Condition>(DEFAULT_CONDITION);
-  const [toast, setToast] = useState("");
-  const [pendingDelete, setPendingDelete] = useState<{ kind: "workout" | "injury"; id: string } | null>(null);
+  const [exercise, setExercise] = useState(EXERCISE_PRESETS);
+  const [weight, setWeight] = useState("20");
+  const [reps, setReps] = useState("10");
+  const [sets, setSets] = useState("3");
 
-  const [exercise, setExercise] = useState("");
-  const [weight, setWeight] = useState("");
-  const [reps, setReps] = useState("");
-  const [sets, setSets] = useState("");
-  const [workoutError, setWorkoutError] = useState("");
-
-  const [part, setPart] = useState("");
+  const [part, setPart] = useState(BODY_PARTS);
   const [pain, setPain] = useState(2);
-  const [injuryDate, setInjuryDate] = useState("");
   const [memo, setMemo] = useState("");
-  const [injuryError, setInjuryError] = useState("");
+  const [savedToast, setSavedToast] = useState("");
+
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
 
   useEffect(() => {
-    const store = loadStore();
-    setWorkouts(store.workouts);
-    setInjuries(store.injuries);
-    if (store.condition) setCondition(store.condition);
-    setInjuryDate(todayString());
-    setReady(true);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Store>;
+        setStore({
+          workouts: Array.isArray(parsed.workouts) ? parsed.workouts : [],
+          injuries: Array.isArray(parsed.injuries) ? parsed.injuries : [],
+          condition: parsed.condition ?? DEFAULT_CONDITION,
+        });
+      }
+    } catch {
+      // ignore
+    }
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ workouts, injuries, condition }));
-  }, [ready, workouts, injuries, condition]);
+    if (!loaded) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch {
+      // ignore
+    }
+  }, [store, loaded]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(""), 2400);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  const advice = useMemo(() => getBaronAdvice(store.condition, store.workouts), [store.condition, store.workouts]);
 
-  const alerts = useMemo(() => currentInjuries(injuries), [injuries]);
+  const updateCondition = (key: keyof Condition, val: number) => {
+    setStore((prev) => ({
+      ...prev,
+      condition: { ...prev.condition, [key]: val },
+    }));
+  };
+
+  const showToast = (msg: string) => {
+    setSavedToast(msg);
+    setTimeout(() => setSavedToast(""), 2500);
+  };
+
+  const handleAddWorkout = (e: FormEvent) => {
+    e.preventDefault();
+    if (!exercise.trim()) return;
+    const newItem: Workout = {
+      id: crypto.randomUUID(),
+      exercise: exercise.trim(),
+      weight: Math.max(0, Number(weight) || 0),
+      reps: Math.max(1, Number(reps) || 1),
+      sets: Math.max(1, Number(sets) || 1),
+      createdAt: new Date().toISOString(),
+    };
+    setStore((prev) => ({ ...prev, workouts: [newItem, ...prev.workouts] }));
+    showToast("トレーニングを記録したよ！");
+  };
+
+  const handleAddInjury = (e: FormEvent) => {
+    e.preventDefault();
+    const newItem: Injury = {
+      id: crypto.randomUUID(),
+      part,
+      pain,
+      date: todayString(),
+      memo: memo.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setStore((prev) => ({ ...prev, injuries: [newItem, ...prev.injuries] }));
+    setMemo("");
+    showToast("ケアメモを記録したよ！");
+  };
+
+  const handleDeleteWorkout = (id: string) => {
+    setStore((prev) => ({ ...prev, workouts: prev.workouts.filter((w) => w.id !== id) }));
+  };
+
+  const handleDeleteInjury = (id: string) => {
+    setStore((prev) => ({ ...prev, injuries: prev.injuries.filter((i) => i.id !== id) }));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-cyan-50/50 to-teal-50/40 pb-24 text-slate-800">
+      <header className="sticky top-0 z-20 border-b border-cyan-100 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-full bg-gradient-to-tr from-teal-400 to-sky-400" />
+            <h1 className="bg-gradient-to-r from-sky-600 to-teal-600 bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+              BARON FIT
+            </h1>
+          </div>
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-teal-700">
+            {todayString().replace(/-/g, "/")}
+          </span>
+        </div>
+      </header>
+
+      {savedToast && (
+        <div className="fixed top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-lg">
+          {savedToast}
+        </div>
+      )}
+
+      <main className="mx-auto max-w-md space-y-5 px-4 pt-5">
+        {tab === "home" && (
+          <>
+            <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-white via-sky-50/70 to-teal-50/80 p-4 shadow-sm">
+              <div className="flex items-start gap-3.5">
+                <div className="shrink-0">
+                  <BaronCat className="h-20 w-20 drop-shadow-xs" />
+                  <p className="mt-1 text-center text-[11px] font-bold text-teal-700">コーチ・バロン</p>
+                </div>
+
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${advice.statusStyle}`}>
+                      {advice.status}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl rounded-tl-xs border border-cyan-100 bg-white/95 p-3 text-sm leading-relaxed text-slate-700 shadow-2xs">
+                    {advice.message}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-sm font-bold text-slate-700">今日のコンディションチェック</h2>
+                <span className="text-[11px] text-teal-600">右に動かすほど絶好調！</span>
+              </div>
+
+              <ConditionSlider
+                label="睡眠の質"
+                value={store.condition.sleep}
+                statusText={SLEEP_LABELS[store.condition.sleep]}
+                leftHint="寝不足"
+                rightHint="バッチリ"
+                onChange={(v) => updateCondition("sleep", v)}
+              />
+
+              <ConditionSlider
+                label="筋肉の張り・筋肉痛"
+                value={store.condition.muscleSoreness}
+                statusText={MUSCLE_LABELS[store.condition.muscleSoreness]}
+                leftHint="強い筋肉痛"
+                rightHint="回復バッチリ"
+                onChange={(v) => updateCondition("muscleSoreness", v)}
+              />
+
+              <ConditionSlider
+                label="関節の痛み"
+                value={store.condition.jointPain}
+                statusText={JOINT_LABELS[store.condition.jointPain]}
+                leftHint="痛みあり"
+                rightHint="痛みゼロ"
+                onChange={(v) => updateCondition("jointPain", v)}
+              />
+
+              <ConditionSlider
+                label="集中力・やる気"
+                value={store.condition.focus}
+                statusText={FOCUS_LABELS[store.condition.focus]}
+                leftHint="ぼんやり"
+                rightHint="絶好調"
+                onChange={(v) => updateCondition("focus", v)}
+              />
+            </section>
+
+            <button
+              type="button"
+              onClick={() => setTab("record")}
+              className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-teal-500 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-95 active:scale-[0.99]"
+            >
+              今日の筋トレを記録する →
+            </button>
+          </>
+        )}
+
+        {tab === "record" && (
+          <section className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-cyan-100/60 p-1">
+              <button
+                type="button"
+                onClick={() => setRecordMode("workout")}
+                className={`rounded-xl py-2 text-xs font-bold transition ${
+                  recordMode === "workout"
+                    ? "bg-white text-sky-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                筋トレメニュー記録
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordMode("injury")}
+                className={`rounded-xl py-2 text-xs font-bold transition ${
+                  recordMode === "injury"
+                    ? "bg-white text-teal-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                部位別の違和感・ケア
+              </button>
+            </div>
+
+            {recordMode === "workout" ? (
+              <form
+                onSubmit={handleAddWorkout}
+                className="space-y-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-xs"
+              >
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-600">種目を選ぶ・入力する</label>
+                  <input
+                    type="text"
+                    value={exercise}
+                    onChange={(e) => setExercise(e.target.value)}
+                    placeholder="例：ベンチプレス"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm focus:border-sky-400 focus:bg-white focus:outline-none"
+                    required
+                  />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {EXERCISE_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setExercise(preset)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                          exercise === preset
+                            ? "bg-sky-500 text-white"
+                            : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">重量 (kg)</label>
+                    <input
+                      type="number"
