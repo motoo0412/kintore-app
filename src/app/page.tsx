@@ -151,21 +151,39 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
     e.preventDefault();
     if (!chatInput.trim()) return;
     const userMsg = chatInput.trim();
+    const prevAiMsg = [...messages].reverse().find((m) => m.role === "ai")?.text || "";
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setChatInput("");
 
     setTimeout(() => {
-      let reply = `現在のコンディション（平均 ${avgScore.toFixed(1)} / 5.0）を踏まえると、`;
-      if (userMsg.includes("痛") || userMsg.includes("重") || condition.joint <= 2) {
-        reply += "違和感がある部位に負担がかかる種目はパスして、重量を70%に落とした2種目だけで切り上げるのが最も賢い選択です。";
-      } else if (userMsg.includes("時間") || userMsg.includes("短")) {
-        reply += "マイセットの上から2種目だけに絞り、インターバルを90秒にして30分でサッとととのえましょう！";
+      const firstExercise = mysets[0]?.name || "メイン種目";
+      const secondExercise = mysets[1]?.name || "サブ種目";
+      let reply = "";
+
+      if (userMsg.includes("なぜ") || userMsg.includes("理由") || userMsg.includes("どう") && prevAiMsg.includes("調整")) {
+        reply = `今回のスコアでは特に「${
+          condition.joint <= 3 ? "関節の快適さ" : condition.sleep <= 3 ? "昨日の睡眠" : "疲労感"
+        }」が控えめなため、高重量でのフォーム崩れを防ぐ狙いがあります。まずは${firstExercise}の1セット目の感触を見てから決めても大丈夫ですよ。`;
+      } else if (userMsg.includes("いける") || userMsg.includes("上げ") || userMsg.includes("重く") || userMsg.includes("調子いい")) {
+        reply = `いいですね！その感覚があるなら、${firstExercise}は通常重量（100%）でしっかり刺激を入れつつ、後半の${secondExercise}以降で余力を残す「メリハリ配分」にしてみましょう。`;
+      } else if (userMsg.includes("肩") || userMsg.includes("腰") || userMsg.includes("膝") || userMsg.includes("痛")) {
+        const target = mysets.find((m) =>
+          (userMsg.includes("肩") && (m.name.includes("プレス") || m.name.includes("懸垂"))) ||
+          ((userMsg.includes("腰") || userMsg.includes("膝")) && (m.name.includes("スクワット") || m.name.includes("デッド") || m.name.includes("RDL")))
+        );
+        reply = target
+          ? `違和感があるなら、今日の「${target.name}」は思い切ってパスするか、可動域を浅くして軽めに流しましょう。他の種目だけでも十分約束は果たせます。`
+          : `違和感がある部位に負荷が逃げるのを防ぐため、今日は種目数を2つに絞り、丁寧なネガティブ動作（下ろす動き）だけでととのえましょう。`;
+      } else if (userMsg.includes("時間") || userMsg.includes("短") || userMsg.includes("サクッと")) {
+        reply = `時短モードですね！今日は「${firstExercise}」と「${secondExercise}」の2種目だけに絞り、セット数を各2セットに減らして25分で綺麗に切り上げましょう。`;
       } else {
-        reply += `無理に重量を上げず、提案重量（約${Math.round(advice.ratio * 100)}%）でフォームの精度を高めるのがおすすめです。「調整ボタン」をONにして進めてみてください。`;
+        reply = `「${userMsg}」ですね。今のマイセット（${mysets.length}種目）をベースにするなら、最初の「${firstExercise}」を一番集中して行い、残りは体調に合わせてセット数を1つ減らす調整が今のコンディション（平均${avgScore.toFixed(1)}）に一番合っています。`;
       }
+
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
     }, 400);
   };
+
 
   const handleCompleteWorkout = () => {
     if (!records.includes(todayStr)) {
