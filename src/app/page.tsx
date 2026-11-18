@@ -354,6 +354,9 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
                 );
               })}
             </div>
+          )}
+  </div>
+
 
             <button
               onClick={() => setActiveTab("myset")}
