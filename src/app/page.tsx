@@ -6,63 +6,21 @@ type Tab = "home" | "record" | "history";
 type RecordMode = "workout" | "injury";
 type HistoryFilter = "all" | "workout" | "injury";
 
-type Workout = {
-  id: string;
-  exercise: string;
-  weight: number;
-  reps: number;
-  sets: number;
-  createdAt: string;
-};
-
-type Injury = {
-  id: string;
-  part: string;
-  pain: number;
-  date: string;
-  memo: string;
-  createdAt: string;
-};
-
-type Condition = {
-  sleep: number;
-  jointPain: number;
-  focus: number;
-};
-
-type Store = {
-  workouts: Workout[];
-  injuries: Injury[];
-  condition?: Condition;
-};
+type Workout = { id: string; exercise: string; weight: number; reps: number; sets: number; createdAt: string };
+type Injury = { id: string; part: string; pain: number; date: string; memo: string; createdAt: string };
+type Condition = { sleep: number; jointPain: number; focus: number };
+type Store = { workouts: Workout[]; injuries: Injury[]; condition?: Condition };
 
 const STORAGE_KEY = "nyantore-records-v1";
 const EXERCISE_PRESETS = ["ブルガリアンスクワット", "ルーマニアンデッドリフト", "ワンハンドロー", "ダンベルベンチプレス", "サイドレイズ", "リバースフライ", "デッドバグ"];
 const BODY_PARTS = ["首", "肩", "ひじ", "手首", "背中", "腰", "股関節", "ひざ", "足首", "ふくらはぎ"];
 const PAIN_LABELS = ["", "ほぼ気にならない", "すこし違和感", "ほどほど", "しっかりケア", "お休み優先"];
-
 const SLEEP_LABELS = ["", "寝不足", "やや浅い", "ふつう", "よく寝た", "バッチリ"];
 const JOINT_LABELS = ["", "痛みなし", "すこし違和感", "やや気になる", "痛みあり", "強い痛み"];
 const FOCUS_LABELS = ["", "ぼんやり", "低め", "ふつう", "集中できる", "絶好調"];
-
-const STAR_LEVELS = Array.from({ length: 5 }, (_, i) => i + 1);
+const STAR_LEVELS =;
 const DEFAULT_CONDITION: Condition = { sleep: 3, jointPain: 1, focus: 3 };
 const EMPTY_STORE: Store = { workouts: [], injuries: [], condition: DEFAULT_CONDITION };
-
-function loadStore(): Store {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_STORE;
-    const parsed = JSON.parse(raw) as Partial<Store>;
-    return {
-      workouts: Array.isArray(parsed.workouts) ? parsed.workouts.filter(isWorkout) : [],
-      injuries: Array.isArray(parsed.injuries) ? parsed.injuries.filter(isInjury) : [],
-      condition: parsed.condition && typeof parsed.condition.sleep === "number" ? parsed.condition : DEFAULT_CONDITION,
-    };
-  } catch {
-    return EMPTY_STORE;
-  }
-}
 
 function isWorkout(v: unknown): v is Workout {
   if (!v || typeof v !== "object") return false;
@@ -74,6 +32,23 @@ function isInjury(v: unknown): v is Injury {
   if (!v || typeof v !== "object") return false;
   const i = v as Injury;
   return typeof i.id === "string" && typeof i.part === "string" && typeof i.pain === "number" && typeof i.date === "string" && typeof i.memo === "string" && typeof i.createdAt === "string";
+}
+
+function loadStore(): Store {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return EMPTY_STORE;
+    const parsed = JSON.parse(raw) as Partial<Store>;
+    const cond = parsed.condition;
+    const validCond = cond && typeof cond.sleep === "number" && typeof cond.jointPain === "number" && typeof cond.focus === "number" ? cond : DEFAULT_CONDITION;
+    return {
+      workouts: Array.isArray(parsed.workouts) ? parsed.workouts.filter(isWorkout) : [],
+      injuries: Array.isArray(parsed.injuries) ? parsed.injuries.filter(isInjury) : [],
+      condition: validCond,
+    };
+  } catch {
+    return EMPTY_STORE;
+  }
 }
 
 function todayString() {
@@ -126,71 +101,32 @@ function currentInjuries(injuries: Injury[]) {
 
 function getDynamicAdvice(condition: Condition, workouts: Workout[], injuries: Injury[]) {
   const { sleep, jointPain, focus } = condition;
-  const worst = currentInjuries(injuries).at(0);
+  const worst = currentInjuries(injuries);
   const trainedToday = workouts.some((w) => isSameDay(w.createdAt));
 
   if (jointPain >= 4 || (worst && worst.pain >= 4)) {
     const partText = worst ? `${worst.part}や関節` : "関節";
-    return {
-      badge: "お休み・ケア優先",
-      title: "今日は無理せず回復に専念しよう",
-      body: `${partText}の痛みが強めだね。重りを使うトレーニングはお休みして、軽いストレッチや入浴でゆっくり体をいたわろう。`,
-    };
+    return { badge: "お休み・ケア優先", title: "今日は無理せず回復に専念しよう", body: `${partText}の痛みが強めだね。重りを使うトレーニングはお休みして、軽いストレッチや入浴でゆっくり体をいたわろう。` };
   }
-
   if (sleep <= 2 && focus <= 2) {
-    return {
-      badge: "軽めメニュー推奨",
-      title: "睡眠と集中力が低め。フォーム重視で軽く！",
-      body: "寝不足と集中力低下が重なるとケガをしやすいよ。いつもの6〜7割の重さで、1〜2セットだけ丁寧に動かせば十分合格！",
-    };
+    return { badge: "軽めメニュー推奨", title: "睡眠と集中力が低め。フォーム重視で軽く！", body: "寝不足と集中力低下が重なるとケガをしやすいよ。いつもの6〜7割の重さで、1〜2セットだけ丁寧に動かせば十分合格！" };
   }
-
   if (sleep <= 2) {
-    return {
-      badge: "ボリューム控えめ",
-      title: "睡眠が浅めだからセット数を減らそう",
-      body: "体の回復が追いついていないかも。種目数をしぼって短時間で切り上げ、今日は早めに休むのが一番のトレーニングだよ。",
-    };
+    return { badge: "ボリューム控えめ", title: "睡眠が浅めだからセット数を減らそう", body: "体の回復が追いついていないかも。種目数をしぼって短時間で切り上げ、今日は早めに休むのが一番のトレーニングだよ。" };
   }
-
   if (jointPain === 3) {
-    return {
-      badge: "部位を選んで実行",
-      title: "違和感がある関節を避けてメニューを組もう",
-      body: "痛みが出る動きはストップ。痛みのない部位（上半身や体幹など）を中心にして、ウォーミングアップを長めにとろうね。",
-    };
+    return { badge: "部位を選んで実行", title: "違和感がある関節を避けてメニューを組もう", body: "痛みが出る動きはストップ。痛みのない部位（上半身や体幹など）を中心にして、ウォーミングアップを長めにとろうね。" };
   }
-
   if (focus <= 2) {
-    return {
-      badge: "気分転換モード",
-      title: "集中しにくい日は好きな種目だけでOK",
-      body: "無理に追い込まなくて大丈夫。得意な種目を1つだけやって、体が温まったらスッキリ終了しよう！",
-    };
+    return { badge: "気分転換モード", title: "集中しにくい日は好きな種目だけでOK", body: "無理に追い込まなくて大丈夫。得意な種目を1つだけやって、体が温まったらスッキリ終了しよう！" };
   }
-
   if (sleep >= 4 && focus >= 4 && jointPain <= 2) {
-    return {
-      badge: "ベストコンディション",
-      title: "心も体も絶好調！記録更新のチャンス",
-      body: "睡眠バッチリ、集中力も最高！しっかりウォームアップしてから、メイン種目の重量や回数アップに挑戦してみよう。",
-    };
+    return { badge: "ベストコンディション", title: "心も体も絶好調！記録更新のチャンス", body: "睡眠バッチリ、集中力も最高！しっかりウォームアップしてから、メイン種目の重量や回数アップに挑戦してみよう。" };
   }
-
   if (trainedToday) {
-    return {
-      badge: "ナイスファイト",
-      title: "今日のトレーニング完了！しっかり栄養補給を",
-      body: "今日も自分のペースで積み上げられたね。水分とタンパク質をとって、ゆっくり体を休めよう。",
-    };
+    return { badge: "ナイスファイト", title: "今日のトレーニング完了！しっかり栄養補給を", body: "今日も自分のペースで積み上げられたね。水分とタンパク質をとって、ゆっくり体を休めよう。" };
   }
-
-  return {
-    badge: "通常メニューOK",
-    title: "安定したコンディション！マイペースにいこう",
-    body: "体調のバランスは良好。まずは軽いセットから始めて、体の動きを確かめながら進めていこうね。",
-  };
+  return { badge: "通常メニューOK", title: "安定したコンディション！マイペースにいこう", body: "体調のバランスは良好。まずは軽いセットから始めて、体の動きを確かめながら進めていこうね。" };
 }
 
 function CatFace({ className = "h-14 w-14" }: { className?: string }) {
@@ -275,5 +211,7 @@ export default function Home() {
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 2400);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
-          
+  const alerts = useMemo(() => currentInjuries(injuries), [injuries]);
