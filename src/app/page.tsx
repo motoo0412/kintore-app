@@ -520,5 +520,389 @@ export default function KintoreApp() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="mb-1 block text-xs font-bold text-slate-600">重量 (kg)</label>
+                    export default function KintoreApp() {
+  const [tab, setTab] = useState<Tab>("home");
+  const [store, setStore] = useState<Store>(EMPTY_STORE);
+  const [loaded, setLoaded] = useState(false);
+
+  const [recordMode, setRecordMode] = useState<RecordMode>("workout");
+  const [exercise, setExercise] = useState(EXERCISE_PRESETS);
+  const [weight, setWeight] = useState("20");
+  const [reps, setReps] = useState("10");
+  const [sets, setSets] = useState("3");
+
+  const [part, setPart] = useState(BODY_PARTS);
+  const [pain, setPain] = useState(2);
+  const [memo, setMemo] = useState("");
+  const [savedToast, setSavedToast] = useState("");
+
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Store>;
+        setStore({
+          workouts: Array.isArray(parsed.workouts) ? parsed.workouts : [],
+          injuries: Array.isArray(parsed.injuries) ? parsed.injuries : [],
+          condition: parsed.condition ?? DEFAULT_CONDITION,
+        });
+      }
+    } catch {
+      // ignore
+    }
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch {
+      // ignore
+    }
+  }, [store, loaded]);
+
+  const advice = useMemo(() => getBaronAdvice(store.condition, store.workouts), [store.condition, store.workouts]);
+
+  const updateCondition = (key: keyof Condition, val: number) => {
+    setStore((prev) => ({
+      ...prev,
+      condition: { ...prev.condition, [key]: val },
+    }));
+  };
+
+  const showToast = (msg: string) => {
+    setSavedToast(msg);
+    setTimeout(() => setSavedToast(""), 2500);
+  };
+
+  const handleAddWorkout = (e: FormEvent) => {
+    e.preventDefault();
+    if (!exercise.trim()) return;
+    const newItem: Workout = {
+      id: crypto.randomUUID(),
+      exercise: exercise.trim(),
+      weight: Math.max(0, Number(weight) || 0),
+      reps: Math.max(1, Number(reps) || 1),
+      sets: Math.max(1, Number(sets) || 1),
+      createdAt: new Date().toISOString(),
+    };
+    setStore((prev) => ({ ...prev, workouts: [newItem, ...prev.workouts] }));
+    showToast("トレーニングを記録したよ！");
+  };
+
+  const handleAddInjury = (e: FormEvent) => {
+    e.preventDefault();
+    const newItem: Injury = {
+      id: crypto.randomUUID(),
+      part,
+      pain,
+      date: todayString(),
+      memo: memo.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setStore((prev) => ({ ...prev, injuries: [newItem, ...prev.injuries] }));
+    setMemo("");
+    showToast("ケアメモを記録したよ！");
+  };
+
+  const handleDeleteWorkout = (id: string) => {
+    setStore((prev) => ({ ...prev, workouts: prev.workouts.filter((w) => w.id !== id) }));
+  };
+
+  const handleDeleteInjury = (id: string) => {
+    setStore((prev) => ({ ...prev, injuries: prev.injuries.filter((i) => i.id !== id) }));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-cyan-50/50 to-teal-50/40 pb-24 text-slate-800">
+      <header className="sticky top-0 z-20 border-b border-cyan-100 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-full bg-gradient-to-tr from-teal-400 to-sky-400" />
+            <h1 className="bg-gradient-to-r from-sky-600 to-teal-600 bg-clip-text text-lg font-extrabold tracking-tight text-transparent">
+              BARON FIT
+            </h1>
+          </div>
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-teal-700">
+            {todayString().replace(/-/g, "/")}
+          </span>
+        </div>
+      </header>
+
+      {savedToast && (
+        <div className="fixed top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-lg">
+          {savedToast}
+        </div>
+      )}
+
+      <main className="mx-auto max-w-md space-y-5 px-4 pt-5">
+        {tab === "home" && (
+          <>
+            <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-white via-sky-50/70 to-teal-50/80 p-4 shadow-sm">
+              <div className="flex items-start gap-3.5">
+                <div className="shrink-0">
+                  <BaronCat className="h-20 w-20 drop-shadow-xs" />
+                  <p className="mt-1 text-center text-[11px] font-bold text-teal-700">コーチ・バロン</p>
+                </div>
+
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${advice.statusStyle}`}>
+                      {advice.status}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl rounded-tl-xs border border-cyan-100 bg-white/95 p-3 text-sm leading-relaxed text-slate-700 shadow-2xs">
+                    {advice.message}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-sm font-bold text-slate-700">今日のコンディションチェック</h2>
+                <span className="text-[11px] text-teal-600">右に動かすほど絶好調！</span>
+              </div>
+
+              <ConditionSlider
+                label="睡眠の質"
+                value={store.condition.sleep}
+                statusText={SLEEP_LABELS[store.condition.sleep]}
+                leftHint="寝不足"
+                rightHint="バッチリ"
+                onChange={(v) => updateCondition("sleep", v)}
+              />
+
+              <ConditionSlider
+                label="筋肉の張り・筋肉痛"
+                value={store.condition.muscleSoreness}
+                statusText={MUSCLE_LABELS[store.condition.muscleSoreness]}
+                leftHint="強い筋肉痛"
+                rightHint="回復バッチリ"
+                onChange={(v) => updateCondition("muscleSoreness", v)}
+              />
+
+              <ConditionSlider
+                label="関節の痛み"
+                value={store.condition.jointPain}
+                statusText={JOINT_LABELS[store.condition.jointPain]}
+                leftHint="痛みあり"
+                rightHint="痛みゼロ"
+                onChange={(v) => updateCondition("jointPain", v)}
+              />
+
+              <ConditionSlider
+                label="集中力・やる気"
+                value={store.condition.focus}
+                statusText={FOCUS_LABELS[store.condition.focus]}
+                leftHint="ぼんやり"
+                rightHint="絶好調"
+                onChange={(v) => updateCondition("focus", v)}
+              />
+            </section>
+
+            <button
+              type="button"
+              onClick={() => setTab("record")}
+              className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-teal-500 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-95 active:scale-[0.99]"
+            >
+              今日の筋トレを記録する →
+            </button>
+          </>
+        )}
+
+        {tab === "record" && (
+          <section className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-cyan-100/60 p-1">
+              <button
+                type="button"
+                onClick={() => setRecordMode("workout")}
+                className={`rounded-xl py-2 text-xs font-bold transition ${
+                  recordMode === "workout"
+                    ? "bg-white text-sky-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                筋トレメニュー記録
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordMode("injury")}
+                className={`rounded-xl py-2 text-xs font-bold transition ${
+                  recordMode === "injury"
+                    ? "bg-white text-teal-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                部位別の違和感・ケア
+              </button>
+            </div>
+
+            {recordMode === "workout" ? (
+              <form
+                onSubmit={handleAddWorkout}
+                className="space-y-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-xs"
+              >
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-600">種目を選ぶ・入力する</label>
+                  <input
+                    type="text"
+                    value={exercise}
+                    onChange={(e) => setExercise(e.target.value)}
+                    placeholder="例：ベンチプレス"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm focus:border-sky-400 focus:bg-white focus:outline-none"
+                    required
+                  />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {EXERCISE_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setExercise(preset)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                          exercise === preset
+                            ? "bg-sky-500 text-white"
+                            : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">重量 (kg)</label>
                     <input
                       type="number"
+        {tab === "history" && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700">これまでの記録</h2>
+              <div className="flex gap-1 rounded-xl bg-cyan-100/60 p-1 text-xs">
+                {(
+                  [
+                    ["all", "すべて"],
+                    ["workout", "筋トレ"],
+                    ["injury", "ケア"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setHistoryFilter(key)}
+                    className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                      historyFilter === key ? "bg-white text-sky-700 shadow-2xs" : "text-slate-600"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(historyFilter === "all" || historyFilter === "workout") && (
+              <div className="space-y-2.5">
+                {store.workouts.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-cyan-200 bg-white/60 p-6 text-center text-xs text-slate-400">
+                    まだ筋トレの記録がありません。「記録」タブから追加してみよう！
+                  </p>
+                ) : (
+                  store.workouts.map((w) => (
+                    <div
+                      key={w.id}
+                      className="flex items-center justify-between rounded-2xl border border-sky-100 bg-white p-3.5 shadow-2xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                            筋トレ
+                          </span>
+                          <span className="text-xs text-slate-400">{formatDateTime(w.createdAt)}</span>
+                        </div>
+                        <p className="mt-1 text-sm font-bold text-slate-800">{w.exercise}</p>
+                        <p className="text-xs font-medium text-teal-700">
+                          {w.weight}kg × {w.reps}回 × {w.sets}セット
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteWorkout(w.id)}
+                        className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {(historyFilter === "all" || historyFilter === "injury") && store.injuries.length > 0 && (
+              <div className="space-y-2.5 pt-2">
+                {store.injuries.map((inj) => (
+                  <div
+                    key={inj.id}
+                    className="flex items-center justify-between rounded-2xl border border-teal-100 bg-white p-3.5 shadow-2xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                          ケアメモ
+                        </span>
+                        <span className="text-xs text-slate-400">{formatDateTime(inj.createdAt)}</span>
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-slate-800">
+                        {inj.part}（{CARE_LABELS[inj.pain]}）
+                      </p>
+                      {inj.memo && <p className="mt-0.5 text-xs text-slate-500">{inj.memo}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteInjury(inj.id)}
+                      className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                    >
+                      削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+
+      <nav className="fixed right-0 bottom-0 left-0 z-20 border-t border-cyan-100 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto grid max-w-md grid-cols-3">
+          {(
+            [
+              ["home", "メイン", "🐱"],
+              ["record", "記録", "✏️"],
+              ["history", "履歴", "📊"],
+            ] as const
+          ).map(([key, label, icon]) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`flex flex-col items-center justify-center py-2.5 text-xs font-bold transition ${
+                  active ? "text-sky-600" : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <span className="text-base">{icon}</span>
+                <span className="mt-0.5">{label}</span>
+                {active && <span className="mt-1 h-1 w-5 rounded-full bg-gradient-to-r from-sky-400 to-teal-400" />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
