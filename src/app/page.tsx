@@ -335,25 +335,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
               )}
             </div>
 
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={val}
-                      onChange={(e) =>
-                        setCondition({ ...condition, [item.key]: Number(e.target.value) })
-                      }
-                      className="w-full h-2.5 bg-sky-100 rounded-full appearance-none cursor-pointer accent-sky-500"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-400">
-                      <span>{item.low}</span>
-                      <span>{item.high}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+
           )}
   </div>
 
