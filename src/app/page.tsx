@@ -335,11 +335,6 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
               )}
             </div>
 
-
-          )}
-  </div>
-
-
             <button
               onClick={() => setActiveTab("myset")}
               className="w-full py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm shadow-[0_6px_20px_rgba(14,165,233,0.3)] transition active:scale-[0.98]"
