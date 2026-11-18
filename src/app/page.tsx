@@ -24,7 +24,7 @@ type ChatMessage = {
 
 export default function TotonouWorkoutApp() {
   const [activeTab, setActiveTab] = useState<"condition" | "myset" | "calendar">("condition");
-
+const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [condition, setCondition] = useState<Condition>({
     sleep: 3,
     joint: 4,
@@ -285,22 +285,56 @@ export default function TotonouWorkoutApp() {
               </p>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(14,165,233,0.05)] border border-sky-100 space-y-5">
-              {[
-                { key: "sleep", label: "昨日の睡眠", low: "寝不足", high: "熟睡" },
-                { key: "joint", label: "関節の怪我・違和感", low: "痛みあり", high: "快適" },
-                { key: "focus", label: "疲労感・集中力", low: "疲労大", high: "冴えている" },
-                { key: "nutrition", label: "栄養状態", low: "不足気味", high: "十分" },
-              ].map((item) => {
-                const val = condition[item.key as keyof Condition];
-                return (
-                  <div key={item.key} className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-semibold text-slate-700">{item.label}</span>
-                      <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded-full">
-                        {val} / 5
-                      </span>
-                    </div>
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(14,165,233,0.05)] border border-sky-100">
+              <button
+                onClick={() => setIsSliderOpen(!isSliderOpen)}
+                className="w-full flex justify-between items-center text-sm font-bold text-slate-700"
+              >
+                <span>今日の体調を入力・調整する</span>
+                <span className="text-xs font-semibold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                  {isSliderOpen ? "閉じる ▲" : "開く ▼"}
+                </span>
+              </button>
+
+              {isSliderOpen && (
+                <div className="space-y-5 mt-5 pt-5 border-t border-sky-100">
+                  {[
+                    { key: "sleep", label: "昨日の睡眠", low: "寝不足", high: "熟睡" },
+                    { key: "joint", label: "関節の怪我・違和感", low: "痛みあり", high: "快適" },
+                    { key: "focus", label: "疲労感・集中力", low: "疲労大", high: "冴えている" },
+                    { key: "nutrition", label: "栄養状態", low: "不足気味", high: "十分" },
+                  ].map((item) => {
+                    const val = condition[item.key as keyof Condition];
+                    return (
+                      <div key={item.key} className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-semibold text-slate-700">{item.label}</span>
+                          <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded-full">
+                            {val} / 5
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={1}
+                          max={5}
+                          step={1}
+                          value={val}
+                          onChange={(e) =>
+                            setCondition({ ...condition, [item.key]: Number(e.target.value) })
+                          }
+                          className="w-full h-2.5 bg-sky-100 rounded-full appearance-none cursor-pointer accent-sky-500"
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400">
+                          <span>{item.low}</span>
+                          <span>{item.high}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
                     <input
                       type="range"
                       min={1}
