@@ -1,37 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --background: #e7f6fb;
-  --foreground: #2c4a56;
-  --ice: #8fd0e8;
-  --ice-deep: #5eafcc;
-  --ink: #2c4a56;
-  --muted: #6d8b98;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "Yu Gothic",
-    "YuGothic", sans-serif;
-}
-
 body {
-  background-color: var(--background);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23b7dff0' fill-opacity='0.55'%3E%3Cellipse cx='58' cy='72' rx='16' ry='13'/%3E%3Ccircle cx='36' cy='50' r='7'/%3E%3Ccircle cx='50' cy='38' r='7'/%3E%3Ccircle cx='68' cy='38' r='7'/%3E%3Ccircle cx='82' cy='52' r='7'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 140px 140px;
-  color: var(--foreground);
-  font-family: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "Yu Gothic",
-    "YuGothic", "Meiryo", sans-serif;
-}
-
-button,
-input,
-textarea {
-  font-family: inherit;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.55;
-  cursor: pointer;
+  margin: 0;
 }
