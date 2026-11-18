@@ -26,8 +26,7 @@ const DEFAULT_CONDITION: Condition = { sleep: 4, muscleSoreness: 4, jointPain: 5
 const EMPTY_STORE: Store = { workouts: [], injuries: [], condition: DEFAULT_CONDITION };
 
 function todayString() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return "2026-11-18";
 }
 
 function formatDateTime(iso: string) {
@@ -182,7 +181,8 @@ export default function KintoreApp() {
             <span className="inline-block h-3 w-3 rounded-full bg-gradient-to-tr from-teal-400 to-sky-400" />
             <h1 className="bg-gradient-to-r from-sky-600 to-teal-600 bg-clip-text text-lg font-extrabold tracking-tight text-transparent">BARON FIT</h1>
           </div>
-          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-teal-700">{todayString().replace(/-/g, "/")}</span>
+<span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-teal-700">TODAY</span>
+
         </div>
       </header>
 
