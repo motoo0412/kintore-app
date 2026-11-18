@@ -54,14 +54,15 @@ export default function TotonouWorkoutApp() {
 
   const [records, setRecords] = useState<string[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(2);
-  const [isLoaded, setIsLoaded] = useState(false);
+   const [isLoaded, setIsLoaded] = useState(false);
+  const [today, setToday] = useState<Date>(() => new Date(2026, 0, 1));
 
-  const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
     today.getDate()
   ).padStart(2, "0")}`;
 
   useEffect(() => {
+    setToday(new Date());
     const savedSets = localStorage.getItem("totonou_ts_sets");
     const savedRecords = localStorage.getItem("totonou_ts_records");
     const savedGoal = localStorage.getItem("totonou_ts_goal");
