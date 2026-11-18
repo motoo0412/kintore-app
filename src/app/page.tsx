@@ -24,25 +24,41 @@ type Injury = {
   createdAt: string;
 };
 
+type Condition = {
+  sleep: number;
+  jointPain: number;
+  focus: number;
+};
+
 type Store = {
   workouts: Workout[];
   injuries: Injury[];
+  condition?: Condition;
 };
 
 const STORAGE_KEY = "nyantore-records-v1";
 const EXERCISE_PRESETS = ["ブルガリアンスクワット", "ルーマニアンデッドリフト", "ワンハンドロー", "ダンベルベンチプレス", "サイドレイズ", "リバースフライ", "デッドバグ"];
 const BODY_PARTS = ["首", "肩", "ひじ", "手首", "背中", "腰", "股関節", "ひざ", "足首", "ふくらはぎ"];
 const PAIN_LABELS = ["", "ほぼ気にならない", "すこし違和感", "ほどほど", "しっかりケア", "お休み優先"];
+
+const SLEEP_LABELS = ["", "寝不足", "やや浅い", "ふつう", "よく寝た", "バッチリ"];
+const JOINT_LABELS = ["", "痛みなし", "すこし違和感", "やや気になる", "痛みあり", "強い痛み"];
+const FOCUS_LABELS = ["", "ぼんやり", "低め", "ふつう", "集中できる", "絶好調"];
+
 const STAR_LEVELS = Array.from({ length: 5 }, (_, i) => i + 1);
-const EMPTY_STORE: Store = { workouts: [], injuries: [] };
+const DEFAULT_CONDITION: Condition = { sleep: 3, jointPain: 1, focus: 3 };
+const EMPTY_STORE: Store = { workouts: [], injuries: [], condition: DEFAULT_CONDITION };
 
 function loadStore(): Store {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_STORE;
     const parsed = JSON.parse(raw) as Partial<Store>;
-    if (!Array.isArray(parsed.workouts) || !Array.isArray(parsed.injuries)) return EMPTY_STORE;
-    return { workouts: parsed.workouts.filter(isWorkout), injuries: parsed.injuries.filter(isInjury) };
+    return {
+      workouts: Array.isArray(parsed.workouts) ? parsed.workouts.filter(isWorkout) : [],
+      injuries: Array.isArray(parsed.injuries) ? parsed.injuries.filter(isInjury) : [],
+      condition: parsed.condition && typeof parsed.condition.sleep === "number" ? parsed.condition : DEFAULT_CONDITION,
+    };
   } catch {
     return EMPTY_STORE;
   }
@@ -108,62 +124,97 @@ function currentInjuries(injuries: Injury[]) {
   return [...latest.values()].sort((a, b) => b.pain - a.pain || b.date.localeCompare(a.date));
 }
 
-function trainerMessage(workouts: Workout[], injuries: Injury[]) {
+function getDynamicAdvice(condition: Condition, workouts: Workout[], injuries: Injury[]) {
+  const { sleep, jointPain, focus } = condition;
   const worst = currentInjuries(injuries).at(0);
   const trainedToday = workouts.some((w) => isSameDay(w.createdAt));
-  if (worst && worst.pain >= 4) {
-    return { title: "今日はお休みも大切なメニュー", body: `${worst.part}のコンディションをいたわろうね。猫みたいに丸くなって、回復を優先しよう。ミケはいつでもそばにいるよ。` };
+
+  if (jointPain >= 4 || (worst && worst.pain >= 4)) {
+    const partText = worst ? `${worst.part}や関節` : "関節";
+    return {
+      badge: "お休み・ケア優先",
+      title: "今日は無理せず回復に専念しよう",
+      body: `${partText}の痛みが強めだね。重りを使うトレーニングはお休みして、軽いストレッチや入浴でゆっくり体をいたわろう。`,
+    };
   }
-  if (trainedToday && worst) {
-    return { title: "やさしく動けてえらい！", body: `${worst.part}のコンディションに気をつけながら、今日も自分のペースでナイスファイト。無理はしないでね。` };
+
+  if (sleep <= 2 && focus <= 2) {
+    return {
+      badge: "軽めメニュー推奨",
+      title: "睡眠と集中力が低め。フォーム重視で軽く！",
+      body: "寝不足と集中力低下が重なるとケガをしやすいよ。いつもの6〜7割の重さで、1〜2セットだけ丁寧に動かせば十分合格！",
+    };
   }
+
+  if (sleep <= 2) {
+    return {
+      badge: "ボリューム控えめ",
+      title: "睡眠が浅めだからセット数を減らそう",
+      body: "体の回復が追いついていないかも。種目数をしぼって短時間で切り上げ、今日は早めに休むのが一番のトレーニングだよ。",
+    };
+  }
+
+  if (jointPain === 3) {
+    return {
+      badge: "部位を選んで実行",
+      title: "違和感がある関節を避けてメニューを組もう",
+      body: "痛みが出る動きはストップ。痛みのない部位（上半身や体幹など）を中心にして、ウォーミングアップを長めにとろうね。",
+    };
+  }
+
+  if (focus <= 2) {
+    return {
+      badge: "気分転換モード",
+      title: "集中しにくい日は好きな種目だけでOK",
+      body: "無理に追い込まなくて大丈夫。得意な種目を1つだけやって、体が温まったらスッキリ終了しよう！",
+    };
+  }
+
+  if (sleep >= 4 && focus >= 4 && jointPain <= 2) {
+    return {
+      badge: "ベストコンディション",
+      title: "心も体も絶好調！記録更新のチャンス",
+      body: "睡眠バッチリ、集中力も最高！しっかりウォームアップしてから、メイン種目の重量や回数アップに挑戦してみよう。",
+    };
+  }
+
   if (trainedToday) {
-    return { title: "肉球ハイタッチ！🐾", body: "今日のトレーニング、ちゃんと残ってるよ。続けている自分が、一番のごほうびだね。" };
+    return {
+      badge: "ナイスファイト",
+      title: "今日のトレーニング完了！しっかり栄養補給を",
+      body: "今日も自分のペースで積み上げられたね。水分とタンパク質をとって、ゆっくり体を休めよう。",
+    };
   }
-  if (worst) {
-    const elapsed = daysSince(worst.date) === 0 ? "今日記録したばかり" : `気になりはじめて${daysSince(worst.date)}日`;
-    return { title: "ケアも、りっぱなトレーニング", body: `${worst.part}は${elapsed}。できる範囲で、今日もからだの声を聞いてあげようね。` };
-  }
-  return { title: "ミケからのひとこと", body: "開いてくれてありがとう！重い日は軽く、軽い日は少し楽しく。今日の1セット、一緒に残そうね。" };
+
+  return {
+    badge: "通常メニューOK",
+    title: "安定したコンディション！マイペースにいこう",
+    body: "体調のバランスは良好。まずは軽いセットから始めて、体の動きを確かめながら進めていこうね。",
+  };
 }
 
-function CatFace({ className = "h-16 w-16" }: { className?: string }) {
+function CatFace({ className = "h-14 w-14" }: { className?: string }) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <circle cx="60" cy="60" r="56" fill="#eaf8fd" />
-      <path d="M27 52 C22 28, 28 18, 48 31 Z" fill="#ffffff" stroke="#8fd0e8" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M93 52 C98 28, 92 18, 72 31 Z" fill="#ffffff" stroke="#8fd0e8" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M31 46 C29 32, 32 26, 44 34 Z" fill="#ffd6e2" />
-      <path d="M89 46 C91 32, 88 26, 76 34 Z" fill="#ffd6e2" />
-      <ellipse cx="60" cy="63" rx="36" ry="30" fill="#ffffff" stroke="#8fd0e8" strokeWidth="3" />
-      <path d="M56 34 Q60 42 64 34" fill="#a8dff2" />
-      <ellipse cx="38" cy="68" rx="6" ry="3.8" fill="#ffc4d6" opacity="0.85" />
-      <ellipse cx="82" cy="68" rx="6" ry="3.8" fill="#ffc4d6" opacity="0.85" />
-      <circle cx="44" cy="59" r="5" fill="#2c4a56" />
-      <circle cx="76" cy="59" r="5" fill="#2c4a56" />
+      <circle cx="60" cy="60" r="56" fill="#e0f2fe" />
+      <path d="M27 52 C22 28, 28 18, 48 31 Z" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M93 52 C98 28, 92 18, 72 31 Z" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M31 46 C29 32, 32 26, 44 34 Z" fill="#bae6fd" />
+      <path d="M89 46 C91 32, 88 26, 76 34 Z" fill="#bae6fd" />
+      <ellipse cx="60" cy="63" rx="36" ry="30" fill="#ffffff" stroke="#38bdf8" strokeWidth="3" />
+      <path d="M56 34 Q60 42 64 34" fill="#2dd4bf" />
+      <ellipse cx="38" cy="68" rx="6" ry="3.8" fill="#99f6e4" opacity="0.9" />
+      <ellipse cx="82" cy="68" rx="6" ry="3.8" fill="#99f6e4" opacity="0.9" />
+      <circle cx="44" cy="59" r="5" fill="#0f172a" />
+      <circle cx="76" cy="59" r="5" fill="#0f172a" />
       <circle cx="42.5" cy="57.2" r="1.8" fill="#ffffff" />
       <circle cx="74.5" cy="57.2" r="1.8" fill="#ffffff" />
-      <ellipse cx="60" cy="65.5" rx="3" ry="2.2" fill="#ff9eb8" />
-      <path d="M53 69 Q56.5 73 60 68.5 Q63.5 73 67 69" fill="none" stroke="#2c4a56" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M20 60 L30 62 M19 67 L29 67" stroke="#8fd0e8" strokeWidth="2" strokeLinecap="round" />
-      <path d="M100 60 L90 62 M101 67 L91 67" stroke="#8fd0e8" strokeWidth="2" strokeLinecap="round" />
-      <path d="M40 90 Q60 97 80 90" fill="none" stroke="#6cc3e3" strokeWidth="5.5" strokeLinecap="round" />
-      <circle cx="60" cy="95" r="5.5" fill="#ffe07d" stroke="#e5b842" strokeWidth="1.5" />
-      <circle cx="60" cy="96" r="1.3" fill="#c99524" />
-      <ellipse cx="43" cy="102" rx="8" ry="6" fill="#ffffff" stroke="#8fd0e8" strokeWidth="2.5" />
-      <ellipse cx="77" cy="102" rx="8" ry="6" fill="#ffffff" stroke="#8fd0e8" strokeWidth="2.5" />
-    </svg>
-  );
-}
-
-function Paw({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
-      <ellipse cx="32" cy="42" rx="14" ry="12" fill="currentColor" />
-      <circle cx="16" cy="24" r="6" fill="currentColor" />
-      <circle cx="28" cy="16" r="6.2" fill="currentColor" />
-      <circle cx="40" cy="16" r="6.2" fill="currentColor" />
-      <circle cx="50" cy="26" r="5.6" fill="currentColor" />
+      <ellipse cx="60" cy="65.5" rx="3" ry="2.2" fill="#38bdf8" />
+      <path d="M53 69 Q56.5 73 60 68.5 Q63.5 73 67 69" fill="none" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M20 60 L30 62 M19 67 L29 67" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+      <path d="M100 60 L90 62 M101 67 L91 67" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+      <path d="M40 90 Q60 97 80 90" fill="none" stroke="#14b8a6" strokeWidth="5.5" strokeLinecap="round" />
+      <circle cx="60" cy="95" r="5.5" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -173,7 +224,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (next: number) =
     <div className="flex gap-1" role={onChange ? "radiogroup" : undefined} aria-label="ケア度レベル">
       {STAR_LEVELS.map((star) => {
         const active = star <= value;
-        const cls = `text-[1.45rem] leading-none transition ${active ? "text-[#f2be4b]" : "text-[#d5e4ea]"} ${onChange ? "px-0.5 active:scale-95" : ""}`;
+        const cls = `text-[1.35rem] leading-none transition ${active ? "text-[#14b8a6]" : "text-slate-200"} ${onChange ? "px-0.5 active:scale-95" : ""}`;
         return onChange ? (
           <button key={star} type="button" role="radio" aria-checked={value === star} aria-label={`${star}（${PAIN_LABELS[star]}）`} className={cls} onClick={() => onChange(star)}>★</button>
         ) : (
@@ -183,6 +234,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (next: number) =
     </div>
   );
 }
+
 export default function Home() {
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("home");
@@ -190,6 +242,7 @@ export default function Home() {
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [injuries, setInjuries] = useState<Injury[]>([]);
+  const [condition, setCondition] = useState<Condition>(DEFAULT_CONDITION);
   const [toast, setToast] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ kind: "workout" | "injury"; id: string } | null>(null);
 
@@ -209,322 +262,18 @@ export default function Home() {
     const store = loadStore();
     setWorkouts(store.workouts);
     setInjuries(store.injuries);
+    if (store.condition) setCondition(store.condition);
     setInjuryDate(todayString());
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ workouts, injuries }));
-  }, [ready, workouts, injuries]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ workouts, injuries, condition }));
+  }, [ready, workouts, injuries, condition]);
 
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 2400);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
-  const alerts = useMemo(() => currentInjuries(injuries), [injuries]);
-  const recentWorkouts = useMemo(
-    () => [...workouts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
-    [workouts],
-  );
-  const message = useMemo(() => trainerMessage(workouts, injuries), [workouts, injuries]);
-  const todayCount = workouts.filter((w) => isSameDay(w.createdAt)).length;
-
-  const history = useMemo(() => {
-    const items = [
-      ...workouts.map((workout) => ({ kind: "workout" as const, at: workout.createdAt, workout })),
-      ...injuries.map((injury) => ({ kind: "injury" as const, at: injury.createdAt, injury })),
-    ].sort((a, b) => b.at.localeCompare(a.at));
-    return historyFilter === "all" ? items : items.filter((item) => item.kind === historyFilter);
-  }, [workouts, injuries, historyFilter]);
-
-  function submitWorkout(e: FormEvent) {
-    e.preventDefault();
-    const name = exercise.trim();
-    const w = Number(weight);
-    const r = Number(reps);
-    const s = Number(sets);
-    if (!name) return setWorkoutError("種目を入れてね");
-    if (weight === "" || Number.isNaN(w) || w < 0) return setWorkoutError("重量は0以上の数字にしてね");
-    if (!Number.isInteger(r) || r < 1) return setWorkoutError("回数は1以上の整数にしてね");
-    if (!Number.isInteger(s) || s < 1) return setWorkoutError("セット数は1以上の整数にしてね");
-    setWorkouts((cur) => [{ id: crypto.randomUUID(), exercise: name, weight: w, reps: r, sets: s, createdAt: new Date().toISOString() }, ...cur]);
-    setExercise(""); setWeight(""); setReps(""); setSets(""); setWorkoutError("");
-    setToast("筋トレを記録したよ🐾");
-  }
-
-  function submitInjury(e: FormEvent) {
-    e.preventDefault();
-    if (!part) return setInjuryError("気になる部位を選んでね");
-    if (!injuryDate) return setInjuryError("日付を選んでね");
-    if (pain < 1 || pain > 5) return setInjuryError("レベルを1〜5で選んでね");
-    setInjuries((cur) => [{ id: crypto.randomUUID(), part, pain, date: injuryDate, memo: memo.trim(), createdAt: new Date().toISOString() }, ...cur]);
-    setPart(""); setPain(2); setMemo(""); setInjuryDate(todayString()); setInjuryError("");
-    setToast("コンディションを記録したよ🐾");
-  }
-
-  function copyWorkout(w: Workout) {
-    setWorkouts((cur) => [{ ...w, id: crypto.randomUUID(), createdAt: new Date().toISOString() }, ...cur]);
-    setToast("同じメニューを登録したよ🐾");
-  }
-
-  function deleteRecord(kind: "workout" | "injury", id: string) {
-    if (kind === "workout") setWorkouts((cur) => cur.filter((w) => w.id !== id));
-    else setInjuries((cur) => cur.filter((inj) => inj.id !== id));
-    setPendingDelete(null);
-    setToast("記録を消したよ");
-  }
-
-  const todayLabel = ready ? new Date().toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" }) : "";
-  return (
-    <div className="flex h-dvh items-stretch justify-center px-3 py-4 text-[#2c4a56] sm:px-0 sm:py-6">
-      <div className="relative mx-auto flex h-full max-h-[860px] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbfe_48%,#e7f6fb_100%)] shadow-[0_18px_50px_rgba(94,175,204,0.18)]">
-        <div className="pointer-events-none absolute -right-6 top-16 text-[#d5f0f8]" aria-hidden="true"><Paw className="h-24 w-24" /></div>
-        <div className="pointer-events-none absolute left-4 top-36 text-[#e5f5fb]" aria-hidden="true"><Paw className="h-10 w-10 rotate-[-18deg]" /></div>
-
-        <header className="relative px-5 pb-2 pt-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold tracking-[0.18em] text-[#7eb4c8]">NYAN TORE</p>
-              <h1 className="mt-0.5 text-[1.65rem] font-bold leading-tight text-[#245066]">にゃんトレ</h1>
-              <p className="mt-1 text-sm text-[#6d8b98]">{ready ? `${greeting()}。${todayLabel}` : "ミケが準備しているよ"}</p>
-            </div>
-            <div className="rounded-full bg-white p-1 shadow-[0_8px_20px_rgba(143,208,232,0.35)]">
-              <CatFace className="h-[4.75rem] w-[4.75rem]" />
-            </div>
-          </div>
-        </header>
-
-        <main className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
-          {!ready ? (
-            <section className="mt-10 flex flex-col items-center text-center">
-              <CatFace className="h-24 w-24" />
-              <p className="mt-3 text-sm text-[#6d8b98]">記録をひらいているよ…</p>
-            </section>
-          ) : null}
-
-          {ready && tab === "home" ? (
-            <div className="space-y-4">
-              <section className="rounded-[1.6rem] bg-white/90 p-4 shadow-[0_10px_28px_rgba(143,208,232,0.16)] ring-1 ring-[#d7f1f8]">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="flex items-center gap-1.5 text-base font-bold"><Paw className="h-4 w-4 text-[#8fd0e8]" />いまのコンディション</h2>
-                  <span className="rounded-full bg-[#e7f6fb] px-2.5 py-1 text-xs font-semibold text-[#3f7f99]">{alerts.length > 0 ? `${alerts.length}か所ケア中` : "絶好調！"}</span>
-                </div>
-                {alerts.length === 0 ? (
-                  <p className="rounded-2xl bg-[#f5fbfe] px-4 py-3 text-sm text-[#5b7e8d]">気になる部位の登録はありません。今日も気持ちよく動けそう🐾</p>
-                ) : (
-                  <ul className="space-y-2.5">
-                    {alerts.map((item) => (
-                      <li key={item.id} className="rounded-2xl bg-[#f4fbfe] px-3.5 py-3 ring-1 ring-[#dff2f9]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-base font-bold text-[#245066]">{item.part}</span>
-                          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[#3f7f99]">{daysLabel(item.date)}</span>
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between">
-                          <Stars value={item.pain} />
-                          <span className="text-xs font-medium text-[#6d8b98]">{formatDay(item.date)}〜 ・ {PAIN_LABELS[item.pain]}</span>
-                        </div>
-                        {item.memo ? <p className="mt-1.5 text-xs text-[#5b7e8d]">{item.memo}</p> : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section className="rounded-[1.6rem] bg-[linear-gradient(135deg,#e3f5fc_0%,#f7fcfe_100%)] p-4 shadow-[0_10px_28px_rgba(143,208,232,0.16)] ring-1 ring-[#cfecf7]">
-                <div className="flex items-start gap-3">
-                  <div className="shrink-0 rounded-2xl bg-white p-1 shadow-sm"><CatFace className="h-12 w-12" /></div>
-                  <div>
-                    <p className="text-sm font-bold text-[#245066]">{message.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-[#4f7282]">{message.body}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-[1.6rem] bg-white/90 p-4 shadow-[0_10px_28px_rgba(143,208,232,0.16)] ring-1 ring-[#d7f1f8]">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="flex items-center gap-1.5 text-base font-bold"><Paw className="h-4 w-4 text-[#8fd0e8]" />さいきんの筋トレ</h2>
-                  <span className="rounded-full bg-[#e7f6fb] px-2.5 py-1 text-xs font-semibold text-[#3f7f99]">今日 {todayCount}件</span>
-                </div>
-                {recentWorkouts.length === 0 ? (
-                  <div className="rounded-2xl bg-[#f5fbfe] px-4 py-4 text-center">
-                    <p className="text-sm text-[#5b7e8d]">まだ筋トレの記録がありません</p>
-                    <button type="button" onClick={() => { setRecordMode("workout"); setTab("record"); }} className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#6cc3e3] px-4 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95">
-                      <Paw className="h-3.5 w-3.5" />最初の1回を記録する
-                    </button>
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {recentWorkouts.map((item) => (
-                      <li key={item.id} className="flex items-center justify-between rounded-2xl bg-[#f5fbfe] px-3.5 py-2.5">
-                        <div>
-                          <p className="text-sm font-bold text-[#245066]">{item.exercise}</p>
-                          <p className="text-xs text-[#6d8b98]">{item.weight}kg × {item.reps}回 × {item.sets}セット</p>
-                        </div>
-                        <span className="text-xs text-[#7ea0af]">{formatDateTime(item.createdAt)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </div>
-          ) : null}
-          {ready && tab === "record" ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2 rounded-full bg-white/90 p-1.5 shadow-sm ring-1 ring-[#d7f1f8]">
-                <button type="button" onClick={() => setRecordMode("workout")} className={`rounded-full py-2 text-xs font-bold transition ${recordMode === "workout" ? "bg-[#6cc3e3] text-white shadow-sm" : "text-[#5b7e8d]"}`}>筋トレを記録</button>
-                <button type="button" onClick={() => setRecordMode("injury")} className={`rounded-full py-2 text-xs font-bold transition ${recordMode === "injury" ? "bg-[#6cc3e3] text-white shadow-sm" : "text-[#5b7e8d]"}`}>コンディション</button>
-              </div>
-
-              {recordMode === "workout" ? (
-                <form onSubmit={submitWorkout} className="space-y-4 rounded-[1.6rem] bg-white/90 p-4 shadow-[0_10px_28px_rgba(143,208,232,0.16)] ring-1 ring-[#d7f1f8]">
-                  <div>
-                    <label className="block text-xs font-bold text-[#4f7282]">種目</label>
-                    <input type="text" value={exercise} onChange={(e) => setExercise(e.target.value)} placeholder="例：スクワット" className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3.5 py-2.5 text-sm outline-none focus:border-[#6cc3e3]" />
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {EXERCISE_PRESETS.map((preset) => (
-                        <button key={preset} type="button" onClick={() => setExercise(preset)} className={`rounded-full px-2.5 py-1 text-xs transition ${exercise === preset ? "bg-[#6cc3e3] font-bold text-white" : "bg-[#ebf7fc] text-[#4f7282]"}`}>{preset}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-bold text-[#4f7282]">重量 (kg)</label>
-                      <input type="number" step="0.5" min="0" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="0" className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3 py-2.5 text-sm outline-none focus:border-[#6cc3e3]" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#4f7282]">回数</label>
-                      <input type="number" min="1" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="0" className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3 py-2.5 text-sm outline-none focus:border-[#6cc3e3]" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#4f7282]">セット数</label>
-                      <input type="number" min="1" value={sets} onChange={(e) => setSets(e.target.value)} placeholder="0
-                      " className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3 py-2.5 text-sm outline-none focus:border-[#6cc3e3]" />
-                    </div>
-                  </div>
-                  {workoutError ? <p className="text-xs font-semibold text-[#d96b84]">{workoutError}</p> : null}
-                  <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-full bg-[#6cc3e3] py-3 text-sm font-bold text-white shadow-[0_8px_20px_rgba(108,195,227,0.35)] transition active:scale-98">
-                    <Paw className="h-4 w-4" />筋トレを登録する
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={submitInjury} className="space-y-4 rounded-[1.6rem] bg-white/90 p-4 shadow-[0_10px_28px_rgba(143,208,232,0.16)] ring-1 ring-[#d7f1f8]">
-                  <div>
-                    <label className="block text-xs font-bold text-[#4f7282]">気になる部位</label>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {BODY_PARTS.map((bodyPart) => (
-                        <button key={bodyPart} type="button" onClick={() => setPart(bodyPart)} className={`rounded-full px-3 py-1.5 text-xs transition ${part === bodyPart ? "bg-[#6cc3e3] font-bold text-white" : "bg-[#ebf7fc] text-[#4f7282]"}`}>{bodyPart}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#4f7282]">ケア度・違和感レベル</label>
-                      <span className="text-xs font-semibold text-[#3f7f99]">{PAIN_LABELS[pain]}</span>
-                    </div>
-                    <div className="mt-1.5 rounded-2xl bg-[#f8fdff] px-3.5 py-2.5 ring-1 ring-[#cde9f4]"><Stars value={pain} onChange={setPain} /></div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[#4f7282]">気になりはじめた日</label>
-                    <input type="date" value={injuryDate} onChange={(e) => setInjuryDate(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3.5 py-2.5 text-sm outline-none focus:border-[#6cc3e3]" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[#4f7282]">メモ（任意）</label>
-                    <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="例：深く曲げると少し違和感あり" className="mt-1.5 w-full rounded-2xl border border-[#cde9f4] bg-[#f8fdff] px-3.5 py-2 text-sm outline-none focus:border-[#6cc3e3]" />
-                  </div>
-                  {injuryError ? <p className="text-xs font-semibold text-[#d96b84]">{injuryError}</p> : null}
-                  <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-full bg-[#6cc3e3] py-3 text-sm font-bold text-white shadow-[0_8px_20px_rgba(108,195,227,0.35)] transition active:scale-98">
-                    <Paw className="h-4 w-4" />コンディションを登録する
-                  </button>
-                </form>
-              )}
-            </div>
-          ) : null}
-
-          {ready && tab === "history" ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-1.5 rounded-full bg-white/90 p-1.5 shadow-sm ring-1 ring-[#d7f1f8]">
-                {( [["all", "すべて"], ["workout", "筋トレ"], ["injury", "体調・メモ"]] as const ).map(([key, label]) => (
-                  <button key={key} type="button" onClick={() => setHistoryFilter(key)} className={`rounded-full py-1.5 text-xs font-bold transition ${historyFilter === key ? "bg-[#6cc3e3] text-white shadow-sm" : "text-[#5b7e8d]"}`}>{label}</button>
-                ))}
-              </div>
-              {history.length === 0 ? (
-                <div className="rounded-[1.6rem] bg-white/90 px-4 py-8 text-center ring-1 ring-[#d7f1f8]"><p className="text-sm text-[#6d8b98]">まだ記録がありません</p></div>
-              ) : (
-                <ul className="space-y-2.5">
-                  {history.map((item) => {
-                    if (item.kind === "workout") {
-                      const w = item.workout;
-                      const isConfirming = pendingDelete?.kind === "workout" && pendingDelete.id === w.id;
-                      return (
-                        <li key={w.id} className="rounded-[1.4rem] bg-white/95 p-3.5 shadow-sm ring-1 ring-[#d7f1f8]">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <span className="inline-block rounded-full bg-[#e5f5fb] px-2 py-0.5 text-[10px] font-bold text-[#3f7f99]">筋トレ</span>
-                              <p className="mt-1 text-sm font-bold text-[#245066]">{w.exercise}</p>
-                              <p className="text-xs text-[#5b7e8d]">{w.weight}kg × {w.reps}回 × {w.sets}セット</p>
-                            </div>
-                            <span className="text-xs text-[#7ea0af]">{formatDateTime(w.createdAt)}</span>
-                          </div>
-                          <div className="mt-2.5 flex items-center justify-end gap-2">
-                            <button type="button" onClick={() => copyWorkout(w)} className="rounded-full bg-[#ebf7fc] px-3 py-1 text-xs font-semibold text-[#3f7f99] transition active:scale-95">同じメニューを再登録</button>
-                            {isConfirming ? (
-                              <button type="button" onClick={() => deleteRecord("workout", w.id)} className="rounded-full bg-[#f07d96] px-3 py-1 text-xs font-bold text-white">本当に削除</button>
-                            ) : (
-                              <button type="button" onClick={() => setPendingDelete({ kind: "workout", id: w.id })} className="rounded-full px-2.5 py-1 text-xs text-[#8aa5b2]">削除</button>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    }
-                    const inj = item.injury;
-                    const isConfirming = pendingDelete?.kind === "injury" && pendingDelete.id === inj.id;
-                    return (
-                      <li key={inj.id} className="rounded-[1.4rem] bg-white/95 p-3.5 shadow-sm ring-1 ring-[#d7f1f8]">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span className="inline-block rounded-full bg-[#eef8fc] px-2 py-0.5 text-[10px] font-bold text-[#4f8ca6]">コンディション</span>
-                            <p className="mt-1 text-sm font-bold text-[#245066]">{inj.part}</p>
-                            <div className="mt-0.5 flex items-center gap-2">
-                              <Stars value={inj.pain} />
-                              <span className="text-xs text-[#6d8b98]">{formatDay(inj.date)}〜</span>
-                            </div>
-                            {inj.memo ? <p className="mt-1 text-xs text-[#5b7e8d]">{inj.memo}</p> : null}
-                          </div>
-                          <span className="text-xs text-[#7ea0af]">{formatDateTime(inj.createdAt)}</span>
-                        </div>
-                        <div className="mt-2 flex justify-end">
-                          {isConfirming ? (
-                            <button type="button" onClick={() => deleteRecord("injury", inj.id)} className="rounded-full bg-[#f07d96] px-3 py-1 text-xs font-bold text-white">本当に削除</button>
-                          ) : (
-                            <button type="button" onClick={() => setPendingDelete({ kind: "injury", id: inj.id })} className="rounded-full px-2.5 py-1 text-xs text-[#8aa5b2]">削除</button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          ) : null}
-        </main>
-
-        {toast ? <div className="pointer-events-none absolute bottom-20 left-1/2 z-20 -translate-x-1/2 rounded-full bg-[#245066] px-4 py-2 text-xs font-bold text-white shadow-lg">{toast}</div> : null}
-
-        <nav className="relative grid grid-cols-3 border-t border-[#dcf1f8] bg-white/95 px-3 py-2">
-          {( [["home", "ホーム"], ["record", "記録する"], ["history", "履歴"]] as const ).map(([key, label]) => {
-            const active = tab === key;
-            return (
-              <button key={key} type="button" onClick={() => setTab(key)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-1.5 text-xs font-bold transition ${active ? "text-[#3d9ec4]" : "text-[#8ca8b5]"}`}>
-                <Paw className={`h-5 w-5 ${active ? "scale-110 text-[#6cc3e3]" : ""}`} />
-                <span>{label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </div>
-  );
-}
+          
