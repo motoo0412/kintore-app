@@ -217,7 +217,7 @@ export default function TotonouWorkoutApp() {
               </div>
 
               <svg width={chartSize} height={chartSize} className="overflow-visible my-1">
-                {.map((level) => (
+                {[1, 2, 3, 4, 5].map((level) => (
                   <polygon
                     key={level}
                     points={angles
@@ -476,7 +476,7 @@ export default function TotonouWorkoutApp() {
                   onChange={(e) => setWeeklyGoal(Number(e.target.value))}
                   className="text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 focus:outline-none"
                 >
-                  {.map((n) => (
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                     <option key={n} value={n}>
                       週 {n} 回目標
                     </option>
