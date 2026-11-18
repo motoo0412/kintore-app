@@ -33,9 +33,9 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
   });
 
   const [mysets, setMysets] = useState<ExerciseSet[]>([
-    { id: "1", name: "スクワット", weight: 60, reps: 10, sets: 3 },
-    { id: "2", name: "ベンチプレス", weight: 50, reps: 10, sets: 3 },
-    { id: "3", name: "ラットプルダウン", weight: 45, reps: 12, sets: 3 },
+    { id: "1", name: "ブルガリアンスクワット", weight: 60, reps: 10, sets: 3 },
+    { id: "2", name: "ダンベルベンチプレス", weight: 50, reps: 10, sets: 3 },
+    { id: "3", name: "ルーマニアンデッドリフト", weight: 45, reps: 12, sets: 3 },
   ]);
   const [isAdjusted, setIsAdjusted] = useState(false);
 
