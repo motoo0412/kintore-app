@@ -18,7 +18,7 @@ const PAIN_LABELS = ["", "ほぼ気にならない", "すこし違和感", "ほ�
 const SLEEP_LABELS = ["", "寝不足", "やや浅い", "ふつう", "よく寝た", "バッチリ"];
 const JOINT_LABELS = ["", "痛みなし", "すこし違和感", "やや気になる", "痛みあり", "強い痛み"];
 const FOCUS_LABELS = ["", "ぼんやり", "低め", "ふつう", "集中できる", "絶好調"];
-const STAR_LEVELS =;
+const STAR_LEVELS =1,2,3,4,5;
 const DEFAULT_CONDITION: Condition = { sleep: 3, jointPain: 1, focus: 3 };
 const EMPTY_STORE: Store = { workouts: [], injuries: [], condition: DEFAULT_CONDITION };
 
