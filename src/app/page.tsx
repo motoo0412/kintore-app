@@ -43,7 +43,7 @@ function getSliderTheme(val: number) {
 
 function getBaronAdvice(condition: Condition, workouts: Workout[]) {
   const { sleep, muscleSoreness, jointPain, focus } = condition;
-  const latest = workouts;
+  const latest = workouts.at(0);
 
   if (sleep >= 4 && muscleSoreness >= 4 && jointPain >= 4 && focus >= 4) {
     const hint = latest ? `前回の「${latest.exercise}（${latest.weight}kg）」から少しだけ回数か重さを伸ばしてみよう！` : "まずはフォームを意識して、前回より1回でも多く挑戦してみよう！";
@@ -130,11 +130,11 @@ export default function KintoreApp() {
   const [store, setStore] = useState<Store>(EMPTY_STORE);
   const [loaded, setLoaded] = useState(false);
   const [recordMode, setRecordMode] = useState<RecordMode>("workout");
-  const [exercise, setExercise] = useState(EXERCISE_PRESETS);
+  const [exercise, setExercise] = useState(EXERCISE_PRESETS.at(0)??"");
   const [weight, setWeight] = useState("20");
   const [reps, setReps] = useState("10");
   const [sets, setSets] = useState("3");
-  const [part, setPart] = useState(BODY_PARTS);
+  const [part, setPart] = useState(BODY_PARTS.at(0)??"");
   const [pain, setPain] = useState(2);
   const [memo, setMemo] = useState("");
   const [savedToast, setSavedToast] = useState("");
