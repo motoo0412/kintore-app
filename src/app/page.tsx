@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 type Condition = {
   sleep: number;
@@ -24,7 +25,7 @@ type ChatMessage = {
 
 export default function TotonouWorkoutApp() {
   const [activeTab, setActiveTab] = useState<"condition" | "myset" | "calendar">("condition");
-const [isSliderOpen, setIsSliderOpen] = useState(false);
+  const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [condition, setCondition] = useState<Condition>({
     sleep: 3,
     joint: 4,
@@ -32,11 +33,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
     nutrition: 4,
   });
 
-  const [mysets, setMysets] = useState<ExerciseSet[]>([
-    { id: "1", name: "ブルガリアンスクワット", weight: 60, reps: 10, sets: 3 },
-    { id: "2", name: "ダンベルベンチプレス", weight: 50, reps: 10, sets: 3 },
-    { id: "3", name: "ルーマニアンデッドリフト", weight: 45, reps: 12, sets: 3 },
-  ]);
+  const [mysets, setMysets] = useState<ExerciseSet[]>([]);
   const [isAdjusted, setIsAdjusted] = useState(false);
 
   const [newName, setNewName] = useState("");
@@ -54,7 +51,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
 
   const [records, setRecords] = useState<string[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState<number>(2);
-   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [today, setToday] = useState<Date>(() => new Date(2026, 0, 1));
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
@@ -63,21 +60,40 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
 
   useEffect(() => {
     setToday(new Date());
-    const savedSets = localStorage.getItem("totonou_ts_sets");
     const savedRecords = localStorage.getItem("totonou_ts_records");
     const savedGoal = localStorage.getItem("totonou_ts_goal");
-    if (savedSets) setMysets(JSON.parse(savedSets));
     if (savedRecords) setRecords(JSON.parse(savedRecords));
     if (savedGoal) setWeeklyGoal(Number(savedGoal));
-    setIsLoaded(true);
-  }, []);
 
+    const fetchWorkouts = async () => {
+      const { data, error } = await supabase
+        .from("workouts")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("Supabase取得エラー:", error.message);
+      } else if (data) {
+        const formatted: ExerciseSet[] = data.map((row) => ({
+          id: String(row.id),
+          name: row.exercise,
+          weight: Number(row.weight ?? 0),
+          reps: Number(row.reps ?? 10),
+          sets: 3,
+        }));
+        setMysets(formatted);
+      }
+      setIsLoaded(true);
+    };
+
+    fetchWorkouts();
+  }, []);
   useEffect(() => {
     if (!isLoaded) return;
-    localStorage.setItem("totonou_ts_sets", JSON.stringify(mysets));
     localStorage.setItem("totonou_ts_records", JSON.stringify(records));
     localStorage.setItem("totonou_ts_goal", String(weeklyGoal));
-  }, [mysets, records, weeklyGoal, isLoaded]);
+  }, [records, weeklyGoal, isLoaded]);
+
   const avgScore = (condition.sleep + condition.joint + condition.focus + condition.nutrition) / 4;
 
   const getConditionAdvice = () => {
@@ -127,26 +143,57 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
     })
     .join(" ");
 
-  const handleAddSet = (e: React.FormEvent) => {
+  const handleAddSet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newWeight || !newReps) return;
-    const newItem: ExerciseSet = {
-      id: Date.now().toString(),
-      name: newName.trim(),
-      weight: Number(newWeight),
-      reps: Number(newReps),
-      sets: Number(newSets) || 3,
-    };
-    setMysets([...mysets, newItem]);
-    setNewName("");
-    setNewWeight("");
-    setNewReps("");
+
+    const { data, error } = await supabase
+      .from("workouts")
+      .insert([
+        {
+          exercise: newName.trim(),
+          weight: Number(newWeight),
+          reps: Number(newReps),
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase追加エラー:", error.message);
+      alert("保存に失敗しました: " + error.message);
+      return;
+    }
+
+    if (data) {
+      const newItem: ExerciseSet = {
+        id: String(data.id),
+        name: data.exercise,
+        weight: Number(data.weight ?? 0),
+        reps: Number(data.reps ?? 10),
+        sets: Number(newSets) || 3,
+      };
+      setMysets([...mysets, newItem]);
+      setNewName("");
+      setNewWeight("");
+      setNewReps("");
+    }
   };
 
-  const handleDeleteSet = (id: string) => {
+  const handleDeleteSet = async (id: string) => {
+    const { error } = await supabase
+      .from("workouts")
+      .delete()
+      .eq("id", Number(id));
+
+    if (error) {
+      console.error("Supabase削除エラー:", error.message);
+      alert("削除に失敗しました: " + error.message);
+      return;
+    }
+
     setMysets(mysets.filter((item) => item.id !== id));
   };
-
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -160,7 +207,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
       const secondExercise = mysets[1]?.name || "サブ種目";
       let reply = "";
 
-      if (userMsg.includes("なぜ") || userMsg.includes("理由") || userMsg.includes("どう") && prevAiMsg.includes("調整")) {
+      if (userMsg.includes("なぜ") || userMsg.includes("理由") || (userMsg.includes("どう") && prevAiMsg.includes("調整"))) {
         reply = `今回のスコアでは特に「${
           condition.joint <= 3 ? "関節の快適さ" : condition.sleep <= 3 ? "昨日の睡眠" : "疲労感"
         }」が控えめなため、高重量でのフォーム崩れを防ぐ狙いがあります。まずは${firstExercise}の1セット目の感触を見てから決めても大丈夫ですよ。`;
@@ -183,7 +230,6 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
     }, 400);
   };
-
 
   const handleCompleteWorkout = () => {
     if (!records.includes(todayStr)) {
@@ -208,6 +254,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
   const month = today.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-sky-50/50 text-slate-800 pb-24 font-sans selection:bg-sky-200">
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-sky-100 px-5 py-4">
@@ -297,7 +344,6 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
                   );
                 })}
               </svg>
-
               <p className="text-xs text-slate-600 bg-sky-50/80 rounded-2xl p-3.5 text-center leading-relaxed border border-sky-100/80">
                 {advice.text}
               </p>
@@ -361,6 +407,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
             </button>
           </div>
         )}
+
         {activeTab === "myset" && (
           <div className="space-y-5">
             <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(14,165,233,0.06)] border border-sky-100 space-y-4">
@@ -378,44 +425,50 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
                 </button>
               </div>
 
-              <div className="space-y-2.5">
-                {mysets.map((item) => {
-                  const adjustedWeight =
-                    Math.round((item.weight * advice.ratio) / 2.5) * 2.5;
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/80 border border-slate-100"
-                    >
-                      <div>
-                        <h3 className="font-bold text-sm text-slate-800">{item.name}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {isAdjusted && advice.ratio < 1 ? (
-                            <>
-                              <span className="text-sky-600 font-bold text-sm">
-                                {adjustedWeight}kg
-                              </span>{" "}
-                              <span className="line-through text-slate-400">
-                                ({item.weight}kg)
-                              </span>
-                            </>
-                          ) : (
-                            <span className="font-semibold text-slate-700">{item.weight}kg</span>
-                          )}{" "}
-                          × {item.reps}回 × {item.sets}セット
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteSet(item.id)}
-                        className="text-slate-300 hover:text-rose-400 text-lg px-2 transition"
-                        aria-label="削除"
+              {mysets.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">
+                  まだマイセットが登録されていません。下のフォームから追加してみてください！
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {mysets.map((item) => {
+                    const adjustedWeight =
+                      Math.round((item.weight * advice.ratio) / 2.5) * 2.5;
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/80 border border-slate-100"
                       >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-800">{item.name}</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {isAdjusted && advice.ratio < 1 ? (
+                              <>
+                                <span className="text-sky-600 font-bold text-sm">
+                                  {adjustedWeight}kg
+                                </span>{" "}
+                                <span className="line-through text-slate-400">
+                                  ({item.weight}kg)
+                                </span>
+                              </>
+                            ) : (
+                              <span className="font-semibold text-slate-700">{item.weight}kg</span>
+                            )}{" "}
+                            × {item.reps}回 × {item.sets}セット
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSet(item.id)}
+                          className="text-slate-300 hover:text-rose-400 text-lg px-2 transition"
+                          aria-label="削除"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <button
                 onClick={handleCompleteWorkout}
@@ -424,7 +477,6 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
                 今日の約束を達成した（スタンプを押す）
               </button>
             </div>
-
             <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(14,165,233,0.05)] border border-sky-100 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-sky-400" />
@@ -465,7 +517,7 @@ const [isSliderOpen, setIsSliderOpen] = useState(false);
               onSubmit={handleAddSet}
               className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(14,165,233,0.05)] border border-sky-100 space-y-3"
             >
-              <h3 className="text-xs font-bold text-slate-600">定番種目を追加</h3>
+              <h3 className="text-xs font-bold text-slate-600">定番種目を追加（Supabase保存）</h3>
               <div className="grid grid-cols-4 gap-2">
                 <input
                   type="text"
