@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# アプリ名
+「ととのう筋トレ」
+”ととのう”という言葉を採用した理由→筋トレ中にフォームや筋肉の収縮に集中する感覚、あるいは筋トレ後のインターバル中の感覚が、サウナで整っている時の瞑想状態に似ていると感じたため。
+## 📌 開発背景
+ウエイトトレーニングに関節のケガはつきものです。自分自身が筋トレする際も、どんなに気をつけていても関節のケガをすることがあります。筋肉痛は数十時間で引きますが、関節の完治や成長には数ヶ月を要します。その痛み・治癒を自分の記憶力だけで管理することは難しく、また筋トレ前後にメモを取るのは煩わしく思っていました。スライダー式が使いやすいと感じていましたが、既存のアプリで自分が使いたいと思うものが無かったので、ないなら自分で作ればいいじゃない、と思って作りました。
+## ✨ 工夫した点・こだわり
+### 1. 直感的に操作しやすいスライダー機能
+ストレッチ後の筋トレ直前は、筋肉を冷やさないために速やかにトレーニングに取り掛かる必要があります。そのタイミングであっても5秒で自分のコンディションを記録できるよう、メモではなくスライダー方式を採用しました。
+### 2. モチベーションに依存しない事実ベースの設計
+上がったモチベはいつか下がるという考えのもと、ご褒美機能や気持ちを盛り上げるような機能は採用せず、淡々と自分のコンディションと継続した日をデータに蓄積できる仕様にしています。筋トレは歯磨き同様の生活習慣、続けることに意味がある、という気持ちからそのようにしました。また、重量を追いすぎて怪我につながらないように、という思いもあります。
+### 3. シンプルなデザイン
+サウナの”ととのう”時をイメージした、シンプルかつハッキリとした色にすることで、長く利用しても飽きが来ず、使用する人を選ばないデザインにしました。
+## 🛠 使用技術
+TailwindCSS／Typesprict／React／Next.js／Supabase(PostgreSQL / Supabase Client API)／Cursor／Versel
+## 技術選定理由
+Typesprict→今回は逆引き学習のため、AIに指示してコードを吐かせることから始めました。そのため、JavasprictでなくAIがエラーを出しにくいTypesprictを採用しました。
+他の技術については時短が主な目的です。
+FirebaseでなくSupabaseを採用した理由は、データ集計が主要機能だからです。
+実際の開発現場の主要言語とは異なる点も憂慮しましたが、キャッチアップが前提の業界であるため、未知の言語もどんどんキャッチアップしていこうと考えました。
+C言語についてはマシン言語に近い（とっつきにくい）と聞いておりますので、早めにトライします。
+## 🧗 開発中のつまずきと学び
 
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 今後のアップデート予定
+【アプリについて】
+・記録したコンディションと扱った重量を時系列で確認できる折れ線グラフを搭載したいです。今回は開発開始から転職活動まで時間がなかったので実装できていないです。
+・今は個人開発で、尚且つ採用担当者さまにご覧いただくためログイン機能は実装しておりませんが、今後もしリリースして不特定多数の人に利用していただくことになった場合は、セキュリティの観点から認証、許可、アクセス制限などの機能を実装します。
+【自分自身について】
+・11月中旬に思い立って逆引き学習を開始したため、これからコードを一行一行読めるように、またAIの過ちに気がつけるように自身でコードを書けるようにアップデートします。
+・ITに関する体系的な知識も習得中です。
